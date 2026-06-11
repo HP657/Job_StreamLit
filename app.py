@@ -374,7 +374,7 @@ selected_skill = st.selectbox(
     all_skills
 )
 
-life_query = """
+life_query = f"""
 SELECT
 DATE_TRUNC('month', jo.created_at) month,
 COUNT(*) cnt
@@ -383,15 +383,12 @@ JOIN job_opening_skills jos
 ON jo.id = jos.job_opening_id
 JOIN skills s
 ON s.id = jos.skill_id
-WHERE s.name = %(skill)s
+WHERE s.name = '{selected_skill}'
 GROUP BY 1
 ORDER BY 1
 """
 
-life_df = load_df(
-    life_query,
-    {"skill": selected_skill}
-)
+life_df = load_df(life_query)
 
 life_df["growth"] = (
     life_df["cnt"]
