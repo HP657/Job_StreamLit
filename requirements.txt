@@ -6,4 +6,3 @@ scikit-learn
 plotly
 networkx
 matplotlib
-python-dotenv
