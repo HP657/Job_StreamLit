@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine
 from sklearn.metrics.pairwise import cosine_similarity
+import plotly.express as px
+import plotly.graph_objects as go
 
 # =====================
 # PostgreSQL 연결
@@ -16,8 +18,16 @@ DB_PORT = st.secrets["DB_PORT"]
 DB_NAME = st.secrets["DB_NAME"]
 
 engine = create_engine(
-    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"
 )
+
+@st.cache_data(ttl=300)
+def load_df(query, params=None):
+    return pd.read_sql(
+        query,
+        engine,
+        params=params
+    )
 
 st.set_page_config(page_title="시장 가치 분석", layout="wide")
 
@@ -33,7 +43,7 @@ FROM skills
 ORDER BY name
 """
 
-skills_df = pd.read_sql(skills_query, engine)
+skills_df = load_df(skills_query)
 
 all_skills = skills_df["name"].tolist()
 
@@ -62,7 +72,7 @@ JOIN skills s
 GROUP BY s.name
 """
 
-market_df = pd.read_sql(market_query, engine)
+market_df = load_df(market_query)
 
 market_dict = {
     row["name"]: row["demand_count"]
@@ -148,10 +158,7 @@ ON s.id = jos.skill_id
 GROUP BY s.name
 """
 
-growth_df = pd.read_sql(
-    growth_query,
-    engine
-)
+growth_df = load_df(growth_query)
 
 growth_df["growth_rate"] = (
     (
@@ -196,4 +203,299 @@ if user_skills:
             "growth_rate",
             ascending=False
         )
+    )
+
+st.divider()
+st.header("🎯 역량 갭 분석")
+
+radar_query = """
+SELECT
+    s.name,
+    COUNT(*) freq
+FROM job_openings jo
+JOIN job_opening_skills jos
+ON jo.id = jos.job_opening_id
+JOIN skills s
+ON s.id = jos.skill_id
+GROUP BY s.name
+ORDER BY freq DESC
+LIMIT 6
+"""
+
+radar_df = load_df(radar_query)
+
+market_score = radar_df["freq"].tolist()
+
+user_score = []
+
+for skill in radar_df["name"]:
+    if skill in user_skills:
+        user_score.append(max(market_score))
+    else:
+        user_score.append(0)
+
+fig = go.Figure()
+
+fig.add_trace(
+    go.Scatterpolar(
+        r=user_score,
+        theta=radar_df["name"],
+        fill="toself",
+        name="User"
+    )
+)
+
+fig.add_trace(
+    go.Scatterpolar(
+        r=market_score,
+        theta=radar_df["name"],
+        fill="toself",
+        name="Market"
+    )
+)
+
+fig.update_layout(
+    polar=dict(
+        radialaxis=dict(
+            visible=True
+        )
+    )
+)
+
+if user_skills:
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+else:
+    st.info(
+        "보유 기술을 선택하면 역량 갭 분석이 표시됩니다."
+    )
+
+st.divider()
+st.header("📈 시장 기술 트렌드")
+
+trend_query = """
+SELECT
+DATE_TRUNC('month', jo.created_at) month,
+s.name,
+COUNT(*) cnt
+FROM job_openings jo
+JOIN job_opening_skills jos
+ON jo.id = jos.job_opening_id
+JOIN skills s
+ON s.id = jos.skill_id
+GROUP BY 1,2
+"""
+
+trend_df = load_df(trend_query)
+
+top5 = (
+    trend_df.groupby("name")["cnt"]
+    .sum()
+    .sort_values(ascending=False)
+    .head(5)
+    .index
+)
+
+trend_df = trend_df[
+    trend_df["name"].isin(top5)
+]
+
+fig = px.area(
+    trend_df,
+    x="month",
+    y="cnt",
+    color="name",
+    title="Top 5 기술 트렌드"
+)
+
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
+
+st.divider()
+st.header("🏢 기업별 기술 DNA")
+
+heatmap_query = """
+SELECT
+jo.company_name,
+s.name,
+COUNT(*) cnt
+FROM job_openings jo
+JOIN job_opening_skills jos
+ON jo.id = jos.job_opening_id
+JOIN skills s
+ON s.id = jos.skill_id
+GROUP BY 1,2
+"""
+
+heatmap_df = load_df(heatmap_query)
+
+top_companies = (
+    heatmap_df.groupby("company_name")["cnt"]
+    .sum()
+    .sort_values(ascending=False)
+    .head(15)
+    .index
+)
+
+heatmap_df = heatmap_df[
+    heatmap_df["company_name"]
+    .isin(top_companies)
+]
+
+pivot = heatmap_df.pivot_table(
+    index="company_name",
+    columns="name",
+    values="cnt",
+    fill_value=0
+)
+
+fig = px.imshow(
+    pivot,
+    aspect="auto"
+)
+
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
+
+st.divider()
+st.header("📊 기술 생애주기")
+
+selected_skill = st.selectbox(
+    "기술 선택",
+    all_skills
+)
+
+life_query = """
+SELECT
+DATE_TRUNC('month', jo.created_at) month,
+COUNT(*) cnt
+FROM job_openings jo
+JOIN job_opening_skills jos
+ON jo.id = jos.job_opening_id
+JOIN skills s
+ON s.id = jos.skill_id
+WHERE s.name = %(skill)s
+GROUP BY 1
+ORDER BY 1
+"""
+
+life_df = load_df(
+    life_query,
+    {"skill": selected_skill}
+)
+
+life_df["growth"] = (
+    life_df["cnt"]
+    .pct_change()
+    * 100
+).fillna(0)
+
+fig = go.Figure()
+
+fig.add_trace(
+    go.Scatter(
+        x=life_df["month"],
+        y=life_df["cnt"],
+        name="언급 빈도"
+    )
+)
+
+fig.add_trace(
+    go.Scatter(
+        x=life_df["month"],
+        y=life_df["growth"],
+        name="성장률",
+        yaxis="y2"
+    )
+)
+
+fig.update_layout(
+    yaxis=dict(
+        title="언급 빈도"
+    ),
+    yaxis2=dict(
+        title="성장률 %",
+        overlaying="y",
+        side="right"
+    )
+)
+
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
+
+st.divider()
+st.header("🏢 추천 기업")
+
+if user_skills:
+
+    company_query = """
+    SELECT
+        jo.company_name,
+        s.name
+    FROM job_openings jo
+    JOIN job_opening_skills jos
+    ON jo.id = jos.job_opening_id
+    JOIN skills s
+    ON s.id = jos.skill_id
+    """
+
+    company_df = load_df(
+        company_query
+    )
+
+    company_matrix = pd.crosstab(
+        company_df["company_name"],
+        company_df["name"]
+    )
+
+    user_company_vector = []
+
+    for skill in company_matrix.columns:
+
+        if skill in user_skills:
+            user_company_vector.append(1)
+        else:
+            user_company_vector.append(0)
+
+    scores = cosine_similarity(
+        [user_company_vector],
+        company_matrix.values
+    )[0]
+
+    recommend_df = pd.DataFrame({
+        "회사": company_matrix.index,
+        "매칭도": np.round(scores * 100, 2)
+    })
+
+    recommend_df = (
+        recommend_df
+        .sort_values(
+            "매칭도",
+            ascending=False
+        )
+        .head(10)
+    )
+
+    st.dataframe(
+        recommend_df,
+        use_container_width=True
+    )
+    top_company = recommend_df.iloc[0]
+
+    st.success(
+        f"가장 적합한 기업: {top_company['회사']} "
+        f"(매칭도 {top_company['매칭도']}%)"
+    )
+
+else:
+    st.info(
+        "보유 기술을 선택하면 추천 기업이 표시됩니다."
     )
