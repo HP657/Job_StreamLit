@@ -277,15 +277,18 @@ st.header("📈 시장 기술 트렌드")
 
 trend_query = """
 SELECT
-DATE_TRUNC('month', jo.created_at) month,
+DATE_TRUNC('month', jo.created_at) AS month,
 s.name,
-COUNT(*) cnt
+COUNT(*) AS cnt
 FROM job_openings jo
-JOIN job_opening_skills jos
+INNER JOIN job_opening_skills jos
 ON jo.id = jos.job_opening_id
-JOIN skills s
+INNER JOIN skills s
 ON s.id = jos.skill_id
-GROUP BY 1,2
+GROUP BY
+DATE_TRUNC('month', jo.created_at),
+s.name
+ORDER BY month
 """
 
 trend_df = load_df(trend_query)
