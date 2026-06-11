@@ -94,8 +94,13 @@ for skill in all_skills:
     else:
         user_vector.append(0)
 
+    max_demand = max(
+        market_dict.values()
+    )
+
     market_vector.append(
         market_dict.get(skill, 0)
+        / max_demand
     )
 
 user_vector = np.array(user_vector)
@@ -290,173 +295,127 @@ else:
         "보유 기술을 선택하면 역량 갭 분석이 표시됩니다."
     )
 
-st.divider()
-st.header("📈 시장 기술 트렌드")
-
-trend_query = """
-SELECT
-DATE_TRUNC('month', jo.created_at) AS month_date,
-s.name,
-COUNT(*) AS cnt
-FROM job_openings jo
-INNER JOIN job_opening_skills jos
-ON jo.id = jos.job_opening_id
-INNER JOIN skills s
-ON s.id = jos.skill_id
-GROUP BY
-DATE_TRUNC('month', jo.created_at),
-s.name
-ORDER BY month_date
-"""
-
-trend_df = load_df(trend_query)
-
-top5 = (
-    trend_df.groupby("name")["cnt"]
-    .sum()
-    .sort_values(ascending=False)
-    .head(5)
-    .index
-)
-
-trend_df = trend_df[
-    trend_df["name"].isin(top5)
-]
-
-fig = px.area(
-    trend_df,
-    x="month_date",
-    y="cnt",
-    color="name",
-    title="Top 5 기술 트렌드"
-)
-
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
 
 st.divider()
-st.header("🏢 기업별 기술 DNA")
+st.header("📚 같이 배우면 좋은 기술")
 
-heatmap_query = """
-SELECT
-jo.company_name,
-s.name,
-COUNT(*) cnt
-FROM job_openings jo
-JOIN job_opening_skills jos
-ON jo.id = jos.job_opening_id
-JOIN skills s
-ON s.id = jos.skill_id
-GROUP BY 1,2
-"""
+if user_skills:
 
-heatmap_df = load_df(heatmap_query)
+    skill_network_query = """
+    SELECT
+        jo1.skill_id AS base_skill,
+        jo2.skill_id AS related_skill,
+        COUNT(*) AS freq
+    FROM job_opening_skills jo1
+    JOIN job_opening_skills jo2
+        ON jo1.job_opening_id = jo2.job_opening_id
+    WHERE jo1.skill_id <> jo2.skill_id
+    GROUP BY
+        jo1.skill_id,
+        jo2.skill_id
+    """
 
-top_companies = (
-    heatmap_df.groupby("company_name")["cnt"]
-    .sum()
-    .sort_values(ascending=False)
-    .head(15)
-    .index
-)
+    network_df = load_df(skill_network_query)
 
-heatmap_df = heatmap_df[
-    heatmap_df["company_name"]
-    .isin(top_companies)
-]
+    skill_map_query = """
+    SELECT
+        id,
+        name
+    FROM skills
+    """
 
-pivot = heatmap_df.pivot_table(
-    index="company_name",
-    columns="name",
-    values="cnt",
-    fill_value=0
-)
+    skill_map_df = load_df(skill_map_query)
 
-if not pivot.empty:
-    fig = px.imshow(
-        pivot,
-        aspect="auto"
-    )
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
-else:
-    st.info("표시할 기업 데이터가 없습니다.")
-
-
-st.divider()
-st.header("📊 기술 생애주기")
-
-selected_skill = st.selectbox(
-    "기술 선택",
-    all_skills
-)
-
-life_query = """
-SELECT
-DATE_TRUNC('month', jo.created_at) AS month_date,
-COUNT(*) AS cnt
-FROM job_openings jo
-JOIN job_opening_skills jos
-ON jo.id = jos.job_opening_id
-JOIN skills s
-ON s.id = jos.skill_id
-WHERE s.name = %(skill)s
-GROUP BY DATE_TRUNC('month', jo.created_at)
-ORDER BY month_date
-"""
-
-life_df = load_df(
-    life_query,
-    {"skill": selected_skill}
-)
-
-if life_df.empty:
-    st.info("해당 기술의 데이터가 없습니다.")
-else:
-
-    life_df["growth"] = (
-        life_df["cnt"]
-        .pct_change()
-        * 100
-    ).fillna(0)
-
-    fig = go.Figure()
-
-    fig.add_trace(
-        go.Scatter(
-            x=life_df["month_date"],
-            y=life_df["cnt"],
-            name="언급 빈도"
+    id_to_name = dict(
+        zip(
+            skill_map_df["id"],
+            skill_map_df["name"]
         )
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=life_df["month_date"],
-            y=life_df["growth"],
-            name="성장률",
-            yaxis="y2"
+    name_to_id = dict(
+        zip(
+            skill_map_df["name"],
+            skill_map_df["id"]
         )
     )
 
-    fig.update_layout(
-        yaxis=dict(title="언급 빈도"),
-        yaxis2=dict(
-            title="성장률 %",
-            overlaying="y",
-            side="right"
-        )
+    selected_ids = [
+        name_to_id[s]
+        for s in user_skills
+        if s in name_to_id
+    ]
+
+    recommend_scores = {}
+
+    for skill_id in selected_ids:
+
+        related = network_df[
+            network_df["base_skill"] == skill_id
+        ]
+
+        for _, row in related.iterrows():
+
+            related_skill = row["related_skill"]
+
+            if related_skill in selected_ids:
+                continue
+
+            recommend_scores[
+                related_skill
+            ] = (
+                recommend_scores.get(
+                    related_skill,
+                    0
+                )
+                + row["freq"]
+            )
+
+    recommend_skills = pd.DataFrame(
+        [
+            {
+                "기술": id_to_name[k],
+                "연관도": v
+            }
+            for k, v in recommend_scores.items()
+        ]
     )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
+    if not recommend_skills.empty:
+
+        recommend_skills = (
+            recommend_skills
+            .sort_values(
+                "연관도",
+                ascending=False
+            )
+            .head(10)
+        )
+
+        st.dataframe(
+            recommend_skills,
+            use_container_width=True
+        )
+
+        st.success(
+            f"가장 추천되는 기술: "
+            f"{recommend_skills.iloc[0]['기술']}"
+        )
+        st.subheader("❌ 부족 기술 TOP5")
+
+        for idx, row in (
+            recommend_skills
+            .head(5)
+            .iterrows()
+        ):
+            st.write(
+                f"{idx+1}. {row['기술']}"
+            )
+
+    else:
+        st.info(
+            "추천 가능한 기술이 없습니다."
+        )
 
 st.divider()
 st.header("🏢 추천 기업")
@@ -507,7 +466,9 @@ if user_skills:
         })
 
         recommend_df = (
-            recommend_df
+            recommend_df[
+                recommend_df["매칭도"] > 10
+            ]
             .sort_values(
                 "매칭도",
                 ascending=False
