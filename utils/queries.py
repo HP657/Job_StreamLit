@@ -46,20 +46,6 @@ JOIN skills s
 GROUP BY s.name
 """
 
-TOP_SKILLS_RADAR = """
-SELECT
-    s.name,
-    COUNT(*) freq
-FROM job_openings jo
-JOIN job_opening_skills jos
-    ON jo.id = jos.job_opening_id
-JOIN skills s
-    ON s.id = jos.skill_id
-GROUP BY s.name
-ORDER BY freq DESC
-LIMIT 6
-"""
-
 SKILL_NETWORK = """
 SELECT
     jo1.skill_id AS base_skill,
