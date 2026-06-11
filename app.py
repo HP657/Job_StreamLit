@@ -25,7 +25,7 @@ market_value_page.render(user_skills, all_skills, market_dict)
 
 st.divider()
 
-skill_gap_page.render(user_skills, market_dict)
+skill_gap_page.render(user_skills)
 
 st.divider()
 
