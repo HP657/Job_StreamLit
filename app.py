@@ -403,13 +403,16 @@ if user_skills:
         )
         st.subheader("❌ 부족 기술 TOP5")
 
-        for idx, row in (
+        top5_skills = (
             recommend_skills
             .head(5)
-            .iterrows()
-        ):
-            st.write(
-                f"{idx+1}. {row['기술']}"
+        )
+
+        for _, row in top5_skills.iterrows():
+
+            st.metric(
+                label=row["기술"],
+                value=f"{row['연관도']:,}"
             )
 
     else:
