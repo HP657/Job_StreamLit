@@ -50,5 +50,7 @@ def render(user_skills: list[str], market_dict: dict) -> None:
     st.success(f"가장 추천되는 기술: {recommend_skills.iloc[0]['기술']}")
 
     st.subheader("❌ 부족 기술 TOP 5")
-    for _, row in recommend_skills.head(5).iterrows():
-        st.metric(label=row["기술"], value=f"{row['연관도']:,}")
+    st.dataframe(
+        recommend_skills.head(5).reset_index(drop=True),
+        use_container_width=True,
+    )
