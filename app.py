@@ -18,7 +18,8 @@ DB_PORT = st.secrets["DB_PORT"]
 DB_NAME = st.secrets["DB_NAME"]
 
 engine = create_engine(
-    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"
+    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require",
+    pool_pre_ping=True
 )
 
 @st.cache_data(ttl=300)
@@ -115,10 +116,25 @@ if len(user_skills) > 0:
 
     st.subheader("🏆 나의 시장 가치")
 
-    st.metric(
-        "매칭 점수",
-        f"{match_score}%"
-    )
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric(
+            "전체 기술 수",
+            len(all_skills)
+        )
+
+    with col2:
+        st.metric(
+            "선택 기술 수",
+            len(user_skills)
+        )
+
+    with col3:
+        st.metric(
+            "시장 매칭률",
+            f"{match_score}%"
+        )
 
     st.progress(match_score / 100)
 
@@ -230,7 +246,9 @@ user_score = []
 
 for skill in radar_df["name"]:
     if skill in user_skills:
-        user_score.append(max(market_score))
+        user_score.append(
+            market_dict.get(skill, 0)
+        )
     else:
         user_score.append(0)
 
@@ -277,7 +295,7 @@ st.header("📈 시장 기술 트렌드")
 
 trend_query = """
 SELECT
-DATE_TRUNC('month', jo.created_at) AS month,
+DATE_TRUNC('month', jo.created_at) AS month_date,
 s.name,
 COUNT(*) AS cnt
 FROM job_openings jo
@@ -288,7 +306,7 @@ ON s.id = jos.skill_id
 GROUP BY
 DATE_TRUNC('month', jo.created_at),
 s.name
-ORDER BY month
+ORDER BY month_date
 """
 
 trend_df = load_df(trend_query)
@@ -307,7 +325,7 @@ trend_df = trend_df[
 
 fig = px.area(
     trend_df,
-    x="month",
+    x="month_date",
     y="cnt",
     color="name",
     title="Top 5 기술 트렌드"
@@ -356,15 +374,19 @@ pivot = heatmap_df.pivot_table(
     fill_value=0
 )
 
-fig = px.imshow(
-    pivot,
-    aspect="auto"
-)
+if not pivot.empty:
+    fig = px.imshow(
+        pivot,
+        aspect="auto"
+    )
 
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+else:
+    st.info("표시할 기업 데이터가 없습니다.")
+
 
 st.divider()
 st.header("📊 기술 생애주기")
@@ -374,62 +396,67 @@ selected_skill = st.selectbox(
     all_skills
 )
 
-life_query = f"""
+life_query = """
 SELECT
-DATE_TRUNC('month', jo.created_at) month,
-COUNT(*) cnt
+DATE_TRUNC('month', jo.created_at) AS month_date,
+COUNT(*) AS cnt
 FROM job_openings jo
 JOIN job_opening_skills jos
 ON jo.id = jos.job_opening_id
 JOIN skills s
 ON s.id = jos.skill_id
-WHERE s.name = '{selected_skill}'
-GROUP BY 1
-ORDER BY 1
+WHERE s.name = %(skill)s
+GROUP BY DATE_TRUNC('month', jo.created_at)
+ORDER BY month_date
 """
 
-life_df = load_df(life_query)
+life_df = load_df(
+    life_query,
+    {"skill": selected_skill}
+)
 
-life_df["growth"] = (
-    life_df["cnt"]
-    .pct_change()
-    * 100
-).fillna(0)
+if life_df.empty:
+    st.info("해당 기술의 데이터가 없습니다.")
+else:
 
-fig = go.Figure()
+    life_df["growth"] = (
+        life_df["cnt"]
+        .pct_change()
+        * 100
+    ).fillna(0)
 
-fig.add_trace(
-    go.Scatter(
-        x=life_df["month"],
-        y=life_df["cnt"],
-        name="언급 빈도"
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=life_df["month_date"],
+            y=life_df["cnt"],
+            name="언급 빈도"
+        )
     )
-)
 
-fig.add_trace(
-    go.Scatter(
-        x=life_df["month"],
-        y=life_df["growth"],
-        name="성장률",
-        yaxis="y2"
+    fig.add_trace(
+        go.Scatter(
+            x=life_df["month_date"],
+            y=life_df["growth"],
+            name="성장률",
+            yaxis="y2"
+        )
     )
-)
 
-fig.update_layout(
-    yaxis=dict(
-        title="언급 빈도"
-    ),
-    yaxis2=dict(
-        title="성장률 %",
-        overlaying="y",
-        side="right"
+    fig.update_layout(
+        yaxis=dict(title="언급 빈도"),
+        yaxis2=dict(
+            title="성장률 %",
+            overlaying="y",
+            side="right"
+        )
     )
-)
 
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
 
 st.divider()
 st.header("🏢 추천 기업")
@@ -456,44 +483,50 @@ if user_skills:
         company_df["name"]
     )
 
-    user_company_vector = []
+    if company_matrix.empty:
+        st.warning("추천 가능한 기업 데이터가 없습니다.")
+    else:
 
-    for skill in company_matrix.columns:
+        user_company_vector = []
 
-        if skill in user_skills:
-            user_company_vector.append(1)
-        else:
-            user_company_vector.append(0)
+        for skill in company_matrix.columns:
 
-    scores = cosine_similarity(
-        [user_company_vector],
-        company_matrix.values
-    )[0]
+            if skill in user_skills:
+                user_company_vector.append(1)
+            else:
+                user_company_vector.append(0)
 
-    recommend_df = pd.DataFrame({
-        "회사": company_matrix.index,
-        "매칭도": np.round(scores * 100, 2)
-    })
+        scores = cosine_similarity(
+            [user_company_vector],
+            company_matrix.values
+        )[0]
 
-    recommend_df = (
-        recommend_df
-        .sort_values(
-            "매칭도",
-            ascending=False
+        recommend_df = pd.DataFrame({
+            "회사": company_matrix.index,
+            "매칭도": np.round(scores * 100, 2)
+        })
+
+        recommend_df = (
+            recommend_df
+            .sort_values(
+                "매칭도",
+                ascending=False
+            )
+            .head(10)
         )
-        .head(10)
-    )
 
-    st.dataframe(
-        recommend_df,
-        use_container_width=True
-    )
-    top_company = recommend_df.iloc[0]
+        st.dataframe(
+            recommend_df,
+            use_container_width=True
+        )
 
-    st.success(
-        f"가장 적합한 기업: {top_company['회사']} "
-        f"(매칭도 {top_company['매칭도']}%)"
-    )
+        if not recommend_df.empty:
+            top_company = recommend_df.iloc[0]
+
+            st.success(
+                f"가장 적합한 기업: {top_company['회사']} "
+                f"(매칭도 {top_company['매칭도']}%)"
+            )
 
 else:
     st.info(

@@ -1,10 +1,7 @@
 streamlit
 pandas
+numpy
 sqlalchemy
 psycopg2-binary
 scikit-learn
 plotly
-networkx
-matplotlib
-plotly
-networkx
