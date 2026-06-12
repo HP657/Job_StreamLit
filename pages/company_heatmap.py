@@ -6,22 +6,19 @@ from db import load_df
 def get_heatmap_data(user_skill_map):
     selected_skills = list(user_skill_map.keys())
     
-    # 1. 파라미터 바인딩을 위한 준비
-    params = []
+    # 파라미터 전달 오류를 피하기 위해 SQL 문자열을 직접 안전하게 완성합니다.
     if selected_skills:
-        skill_name = selected_skills[0]
-        # 기술이 포함된 정렬 쿼리 (파라미터 사용)
-        order_by = """
+        # 특수문자가 포함될 수 있는 기술명을 안전하게 따옴표로 감쌈
+        skill_name = selected_skills[0].replace("'", "''") 
+        order_by = f"""
         (SELECT COUNT(*) FROM job_opening_skills jos2 
          JOIN skills s2 ON jos2.skill_id = s2.id 
-         WHERE jos2.job_opening_id = jo.id AND s2.name = ?) DESC, 
+         WHERE jos2.job_opening_id = jo.id AND s2.name = '{skill_name}') DESC, 
         COUNT(*) DESC
         """
-        params.append(skill_name)
     else:
         order_by = "COUNT(*) DESC"
 
-    # 2. 쿼리 구성
     query = f"""
     WITH TargetCompanies AS (
         SELECT company_name FROM job_openings 
@@ -42,8 +39,8 @@ def get_heatmap_data(user_skill_map):
     GROUP BY jo.company_name, s.name
     """
     
-    # 3. load_df에 params 전달
-    return load_df(query, params=params)
+    # params 없이 query만 전달
+    return load_df(query)
 
 def render(user_skill_map):
     st.header("🏢 기업별 핵심 기술 DNA 분석")
@@ -70,4 +67,4 @@ def render(user_skill_map):
     )
     
     st.plotly_chart(fig, use_container_width=True)
-    st.info("💡 선택한 기술이 있을 경우 해당 기술 빈도순, 없을 경우 전체 공고 많은 순으로 정렬됩니다.")
+    st.info("💡 정렬 기준: 선택한 기술이 있을 경우 해당 기술 빈도순, 없을 경우 전체 공고 많은 순.")
