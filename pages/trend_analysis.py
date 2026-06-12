@@ -13,13 +13,13 @@ def get_trend_data():
     # job_openings와 skills 테이블을 조인하여 월별 스킬 빈도를 가져오는 쿼리 (쿼리는 본인의 DB 구조에 맞게 수정)
     query = """
     SELECT 
-        strftime('%Y-%m', created_at) as month,
-        skill_name,
+        to_char(jo.created_at, 'YYYY-MM') as month,
+        s.name as skill_name,
         COUNT(*) as count
-    FROM job_opening_skills
-    GROUP BY month, skill_name
-    HAVING count > 5
-    ORDER BY month ASC
+    FROM job_openings jo
+    JOIN job_opening_skills jos ON jo.id = jos.job_opening_id
+    JOIN skills s ON s.id = jos.skill_id
+    GROUP BY 1, 2
     """
     df = load_df(query)
     return df
