@@ -1,7 +1,12 @@
 import streamlit as st
 
+<<<<<<< Updated upstream
 from db import load_df
 from utils.queries import ALL_SKILLS, MARKET_DEMAND, SKILL_GROWTH, SKILL_TREND
+=======
+from utils.analysis import safe_load_df
+from utils.queries import ALL_SKILLS, MARKET_DEMAND, SKILL_GROWTH
+>>>>>>> Stashed changes
 from utils.recommendation import (
     build_user_market_vectors,
     calc_market_match_score,
@@ -33,7 +38,7 @@ def render(user_skills: list[str], all_skills: list[str], market_dict: dict) -> 
     # ── 성장 가속도 ─────────────────────────────────────────
     st.subheader("🚀 성장 가속도")
 
-    growth_raw = load_df(SKILL_GROWTH)
+    growth_raw = safe_load_df(SKILL_GROWTH)
     growth_df = calc_growth_rate(growth_raw)
     my_growth = growth_df[growth_df["name"].isin(user_skills)]
     avg_growth = round(my_growth["growth_rate"].mean(), 2)

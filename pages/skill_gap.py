@@ -1,6 +1,6 @@
 import streamlit as st
 
-from db import load_df
+from utils.analysis import safe_load_df
 from utils.queries import SKILL_NETWORK, SKILL_ID_MAP
 from utils.recommendation import get_recommended_skills
 from utils.graphs import build_network_graph
@@ -14,8 +14,8 @@ def render(user_skills: list[str]) -> None:
         st.info("보유 기술을 선택하면 추천 기술이 표시됩니다.")
         return
 
-    network_df = load_df(SKILL_NETWORK)
-    skill_map_df = load_df(SKILL_ID_MAP)
+    network_df = safe_load_df(SKILL_NETWORK)
+    skill_map_df = safe_load_df(SKILL_ID_MAP)
     id_to_name = dict(zip(skill_map_df["id"], skill_map_df["name"]))
     name_to_id = dict(zip(skill_map_df["name"], skill_map_df["id"]))
 
