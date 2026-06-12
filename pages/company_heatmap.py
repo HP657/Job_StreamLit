@@ -6,10 +6,12 @@ from db import load_df
 def get_heatmap_data(user_skill_map):
     selected_skills = list(user_skill_map.keys())
     
-    # 파라미터 전달 오류를 피하기 위해 SQL 문자열을 직접 안전하게 완성합니다.
+    # 파라미터(params) 없이 쿼리 문자열 안에 직접 안전하게 값을 삽입합니다.
     if selected_skills:
-        # 특수문자가 포함될 수 있는 기술명을 안전하게 따옴표로 감쌈
-        skill_name = selected_skills[0].replace("'", "''") 
+        # SQL Injection 방지를 위해 따옴표를 이스케이프 처리
+        skill_name = str(selected_skills[0]).replace("'", "''")
+        
+        # 쿼리 안에서 직접 값을 삽입하므로 params가 필요 없습니다.
         order_by = f"""
         (SELECT COUNT(*) FROM job_opening_skills jos2 
          JOIN skills s2 ON jos2.skill_id = s2.id 
@@ -39,20 +41,23 @@ def get_heatmap_data(user_skill_map):
     GROUP BY jo.company_name, s.name
     """
     
-    # params 없이 query만 전달
+    # db.py의 원래 함수 규격에 맞춰 딱 query만 전달합니다.
     return load_df(query)
 
 def render(user_skill_map):
     st.header("🏢 기업별 핵심 기술 DNA 분석")
     
+    # 쿼리 실행
     df = get_heatmap_data(user_skill_map)
     
     if df.empty:
-        st.warning("분석할 데이터가 부족합니다.")
+        st.warning("분석할 데이터가 부족합니다. 사이드바에서 다른 기술을 선택해 보세요.")
         return
 
+    # 피벗 테이블 변환
     heatmap_df = df.pivot(index='company_name', columns='skill_name', values='count').fillna(0)
 
+    # 히트맵 시각화
     fig = px.imshow(
         heatmap_df, 
         labels=dict(x="기술", y="기업", color="빈도"),
