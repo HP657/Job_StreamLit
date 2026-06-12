@@ -1,10 +1,17 @@
 import plotly.graph_objects as go
 import streamlit as st
 
+<<<<<<< Updated upstream
 from utils.analysis import safe_load_df
 from utils.queries import SKILL_NETWORK, SKILL_ID_MAP
 from utils.recommendation import get_recommended_skills
 from utils.graphs import build_network_graph
+=======
+from db import load_df
+from utils.analysis import render_sidebar_filters
+from utils.queries import MARKET_DEMAND
+import pages.skill_network as skill_network_page
+>>>>>>> Stashed changes
 
 
 def render(user_skills: list[str]) -> None:
@@ -32,5 +39,8 @@ def render(user_skills: list[str]) -> None:
 
     fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 5])), title="목표 기술 대비 역량 갭", template="plotly_white")
     st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("🕸️ 기술 연관성 네트워크")
+    skill_network_page.render()
 
     st.caption("※ 상위 N개 기술만 레이더 차트에 표시해 보유 역량과 시장 평균을 한눈에 비교합니다.")
