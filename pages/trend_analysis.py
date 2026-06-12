@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from db import get_db_connection  # 기존 DB 연결 방식 유지
+from db import load_df
 
 st.set_page_config(page_title="기술 트렌드 분석", layout="wide")
 
@@ -10,7 +10,6 @@ st.title("📈 시장 기술 트렌드 추이")
 # 1. 데이터 로드 (DB 쿼리)
 @st.cache_data
 def get_trend_data():
-    conn = get_db_connection()
     # job_openings와 skills 테이블을 조인하여 월별 스킬 빈도를 가져오는 쿼리 (쿼리는 본인의 DB 구조에 맞게 수정)
     query = """
     SELECT 
@@ -22,8 +21,7 @@ def get_trend_data():
     HAVING count > 5
     ORDER BY month ASC
     """
-    df = pd.read_sql(query, conn)
-    conn.close()
+    df = load_df(query)
     return df
 
 df = get_trend_data()
