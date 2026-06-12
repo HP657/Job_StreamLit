@@ -1,7 +1,8 @@
 import plotly.express as px
 import streamlit as st
 
-from utils.analysis import render_sidebar_filters, safe_load_df
+from db import load_df
+from utils.analysis import render_sidebar_filters
 
 
 def render() -> None:
@@ -21,7 +22,7 @@ def render() -> None:
     ORDER BY 1, 2
     """
 
-    exp_df = safe_load_df(query)
+    exp_df = load_df(query)
     if exp_df.empty:
         st.info("경력 단계별 기술 데이터를 불러올 수 없습니다.")
         return
