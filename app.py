@@ -5,6 +5,7 @@ from utils.queries import ALL_SKILLS, MARKET_DEMAND
 import pages.market_value as market_value_page
 import pages.skill_gap as skill_gap_page
 import pages.company_recommend as company_recommend_page
+import pages.trend_analysis as trend_analysis_page
 
 
 st.set_page_config(page_title="시장 가치 분석", layout="wide")
@@ -30,3 +31,8 @@ skill_gap_page.render(user_skills)
 st.divider()
 
 company_recommend_page.render(user_skills)
+
+
+st.divider()
+
+trend_analysis_page.render()
