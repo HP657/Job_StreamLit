@@ -1,18 +1,14 @@
 import streamlit as st
 
-<<<<<<< Updated upstream
+
 from db import load_df
 from utils.queries import ALL_SKILLS, MARKET_DEMAND, SKILL_GROWTH, SKILL_TREND
-=======
-from utils.analysis import safe_load_df
-from utils.queries import ALL_SKILLS, MARKET_DEMAND, SKILL_GROWTH
->>>>>>> Stashed changes
+
 from utils.recommendation import (
     build_user_market_vectors,
     calc_market_match_score,
     calc_growth_rate,
 )
-from utils.graphs import build_radar_chart, build_trend_area_chart, build_lifecycle_chart
 
 
 def render(user_skills: list[str], all_skills: list[str], market_dict: dict) -> None:
@@ -33,8 +29,6 @@ def render(user_skills: list[str], all_skills: list[str], market_dict: dict) -> 
     col3.metric("시장 매칭률", f"{match_score}%")
     st.progress(match_score / 100)
 
-    st.plotly_chart(build_radar_chart(user_skills, market_dict, all_skills), use_container_width=True)
-
     # ── 성장 가속도 ─────────────────────────────────────────
     st.subheader("🚀 성장 가속도")
 
@@ -48,10 +42,3 @@ def render(user_skills: list[str], all_skills: list[str], market_dict: dict) -> 
         my_growth[["name", "growth_rate"]].sort_values("growth_rate", ascending=False),
         use_container_width=True,
     )
-
-    st.subheader("📈 시장 기술 트렌드")
-    trend_df = load_df(SKILL_TREND)
-    st.plotly_chart(build_trend_area_chart(trend_df), use_container_width=True)
-
-    st.subheader("🧭 기술 생애주기")
-    st.plotly_chart(build_lifecycle_chart(growth_df, skill_name=None), use_container_width=True)

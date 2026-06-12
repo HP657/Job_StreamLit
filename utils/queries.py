@@ -75,32 +75,3 @@ JOIN job_opening_skills jos
 JOIN skills s
     ON s.id = jos.skill_id
 """
-
-SKILL_TREND = """
-SELECT
-    DATE_TRUNC('month', jo.created_at) AS month,
-    s.name,
-    COUNT(*) AS skill_count
-FROM job_openings jo
-JOIN job_opening_skills jos
-    ON jo.id = jos.job_opening_id
-JOIN skills s
-    ON s.id = jos.skill_id
-WHERE jo.created_at IS NOT NULL
-GROUP BY 1, 2
-ORDER BY 1, 2
-"""
-
-EXPERIENCE_SKILL_COUNT = """
-SELECT
-    COALESCE(NULLIF(TRIM(jo.experience), ''), '미분류') AS experience,
-    s.name,
-    COUNT(*) AS skill_count
-FROM job_openings jo
-JOIN job_opening_skills jos
-    ON jo.id = jos.job_opening_id
-JOIN skills s
-    ON s.id = jos.skill_id
-GROUP BY 1, 2
-ORDER BY 1, 2
-"""
