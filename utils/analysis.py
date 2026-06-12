@@ -18,8 +18,16 @@ def filter_period(df: pd.DataFrame, date_col: str, period: str) -> pd.DataFrame:
 
     days_map = {"최근 30일": 30, "최근 90일": 90, "최근 180일": 180}
     days = days_map.get(period, 30)
-    cutoff = pd.Timestamp.utcnow().normalize() - pd.Timedelta(days=days)
-    return df[df[date_col] >= cutoff].copy()
+
+    try:
+        date_series = pd.to_datetime(df[date_col], errors="coerce", utc=True)
+        if date_series.isna().all():
+            return df.copy()
+
+        cutoff = pd.Timestamp.utcnow().normalize().tz_localize("UTC") - pd.Timedelta(days=days)
+        return df[date_series >= cutoff].copy()
+    except Exception:
+        return df.copy()
 
 
 def limit_top_n(df: pd.DataFrame, count_col: str, top_n: int) -> pd.DataFrame:
