@@ -19,7 +19,7 @@ def get_bubble_data():
     GROUP BY s.name
     """
     df = load_df(query)
-    # 희소성 계산: 전체 공고 대비 언급 비중이 낮을수록 희소함
+    # 희소성 계산
     df['희소성'] = (1 - (df['demand'] / df['total_jobs'])) * 100
     return df
 
@@ -54,17 +54,14 @@ def render(user_skills: list[str], all_skills: list[str], market_dict: dict) -> 
         use_container_width=True
     )
 
-    # 3. 💡 기술 시장 포지셔닝 (강조 및 디자인 강화)
+    # 3. 💡 기술 시장 포지셔닝
     st.subheader("💡 기술 시장 포지셔닝")
     bubble_df = get_bubble_data()
     
-    # 선택 여부 컬럼 추가
+    # 선택 여부 컬럼 추가 (색상 구분을 위해)
     bubble_df['선택 여부'] = bubble_df['skill_name'].apply(
         lambda x: '나의 기술' if x in user_skills else '기타 기술'
     )
-    
-    # 나의 기술만 분리
-    my_skills_df = bubble_df[bubble_df['선택 여부'] == '나의 기술']
     
     # 버블 차트 생성
     fig = px.scatter(
@@ -74,25 +71,17 @@ def render(user_skills: list[str], all_skills: list[str], market_dict: dict) -> 
         size="demand", 
         color="선택 여부",
         hover_name="skill_name",
-        color_discrete_map={'나의 기술': '#FF4B4B', '기타 기술': '#5D6D7E'}, 
+        # 이전의 보기 편한 색상으로 복구
+        color_discrete_map={'나의 기술': '#FF4B4B', '기타 기술': '#1f77b4'}, 
         size_max=50,
         template="plotly_dark",
         title="기술 희소성 vs 시장 수요"
     )
     
-    # 시각적 강조 효과
+    # 테두리 강조만 유지
     fig.update_traces(
         marker=dict(sizemin=10, line=dict(width=2, color='white')),
         opacity=0.8
-    )
-    
-    # 나의 기술 이름 텍스트 추가
-    fig.add_scatter(
-        x=my_skills_df['희소성'], y=my_skills_df['demand'],
-        mode='text', text=my_skills_df['skill_name'],
-        textposition='top center', 
-        textfont=dict(color='white', size=14, weight='bold'),
-        showlegend=False
     )
     
     fig.update_layout(
@@ -103,4 +92,4 @@ def render(user_skills: list[str], all_skills: list[str], market_dict: dict) -> 
     )
     
     st.plotly_chart(fig, use_container_width=True)
-    st.caption("빨간색 버블과 이름으로 강조된 항목이 현재 보유하신 기술입니다.")
+    st.caption("빨간색 버블로 표시된 항목이 현재 보유하신 기술입니다.")
