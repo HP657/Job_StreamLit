@@ -42,7 +42,7 @@ with tab2:
     skill_gap_page.render(user_skill_map)
 
 with tab3:
-    skill_network_page.render()
+    skill_network_page.render(user_skill_map)
 
 with tab4:
     market_value_page.render(user_skill_map, all_skills, market_dict)
