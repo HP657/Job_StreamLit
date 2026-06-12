@@ -6,12 +6,9 @@ from db import load_df
 def get_heatmap_data(user_skill_map):
     selected_skills = list(user_skill_map.keys())
     
-    # 파라미터(params) 없이 쿼리 문자열 안에 직접 안전하게 값을 삽입합니다.
+    # 선택된 기술이 있다면 SQL injection 방지용 이스케이프 처리 후 쿼리 생성
     if selected_skills:
-        # SQL Injection 방지를 위해 따옴표를 이스케이프 처리
-        skill_name = str(selected_skills[0]).replace("'", "''")
-        
-        # 쿼리 안에서 직접 값을 삽입하므로 params가 필요 없습니다.
+        skill_name = selected_skills[0].replace("'", "''")
         order_by = f"""
         (SELECT COUNT(*) FROM job_opening_skills jos2 
          JOIN skills s2 ON jos2.skill_id = s2.id 
@@ -41,35 +38,17 @@ def get_heatmap_data(user_skill_map):
     GROUP BY jo.company_name, s.name
     """
     
-    # db.py의 원래 함수 규격에 맞춰 딱 query만 전달합니다.
+    # 이제 수정된 db.py의 load_df가 params 없이도 안전하게 쿼리만 받아 실행합니다.
     return load_df(query)
 
 def render(user_skill_map):
     st.header("🏢 기업별 핵심 기술 DNA 분석")
-    
-    # 쿼리 실행
     df = get_heatmap_data(user_skill_map)
-    
     if df.empty:
-        st.warning("분석할 데이터가 부족합니다. 사이드바에서 다른 기술을 선택해 보세요.")
+        st.warning("분석할 데이터가 부족합니다.")
         return
 
-    # 피벗 테이블 변환
     heatmap_df = df.pivot(index='company_name', columns='skill_name', values='count').fillna(0)
-
-    # 히트맵 시각화
-    fig = px.imshow(
-        heatmap_df, 
-        labels=dict(x="기술", y="기업", color="빈도"),
-        color_continuous_scale='Blues',
-        aspect="auto"
-    )
-    
-    fig.update_layout(
-        xaxis=dict(side="top"),
-        height=700,
-        margin=dict(l=150, r=50, t=100, b=50)
-    )
-    
+    fig = px.imshow(heatmap_df, color_continuous_scale='Blues', aspect="auto")
+    fig.update_layout(height=700, xaxis=dict(side="top"))
     st.plotly_chart(fig, use_container_width=True)
-    st.info("💡 정렬 기준: 선택한 기술이 있을 경우 해당 기술 빈도순, 없을 경우 전체 공고 많은 순.")
