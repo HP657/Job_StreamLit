@@ -1,6 +1,7 @@
 import streamlit as st
 
 from db import load_df
+import pages.market_trend as market_trend_page
 from utils.queries import ALL_SKILLS, MARKET_DEMAND, SKILL_GROWTH
 from utils.recommendation import (
     build_user_market_vectors,
@@ -40,3 +41,6 @@ def render(user_skills: list[str], all_skills: list[str], market_dict: dict) -> 
         my_growth[["name", "growth_rate"]].sort_values("growth_rate", ascending=False),
         use_container_width=True,
     )
+
+    st.subheader("📈 시장 기술 트렌드")
+    market_trend_page.render()
