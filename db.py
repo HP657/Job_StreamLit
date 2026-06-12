@@ -1,6 +1,8 @@
+import os
+
+import pandas as pd
 import streamlit as st
 from sqlalchemy import create_engine
-import pandas as pd
 
 
 DB_USER = st.secrets["DB_USER"]
