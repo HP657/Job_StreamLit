@@ -1,29 +1,32 @@
 import streamlit as st
-# 다른 파일들을 불러옵니다 (모듈로 사용)
-from components import market_value, skill_gap, company_recommend 
 
-st.set_page_config(page_title="채용 데이터 대시보드", layout="wide")
+from db import load_df
+from utils.queries import ALL_SKILLS, MARKET_DEMAND
+import pages.market_value as market_value_page
+import pages.skill_gap as skill_gap_page
+import pages.company_recommend as company_recommend_page
 
-# 사이드바 설정 (모든 페이지 공통 적용)
-with st.sidebar:
-    st.header("필터 설정")
-    selected_tech = st.multiselect("기술 스택", ["Python", "SQL", "Docker", "AWS"])
-    date_range = st.date_input("조회 기간")
-    st.markdown("---")
-    show_raw = st.checkbox("데이터 상세 보기")
 
-# 탭 구성
-tab1, tab2, tab3 = st.tabs(["시장 가치 분석", "스킬 갭 분석", "회사 추천"])
+st.set_page_config(page_title="시장 가치 분석", layout="wide")
+st.title("📊 나의 시장 가치 분석")
 
-with tab1:
-    st.subheader("시장 가치")
-    # market_value.py의 메인 로직을 market_value.render() 등으로 함수화하여 호출
-    market_value.render(selected_tech)
+# ── 공통 데이터 로드 ────────────────────────────────────────
+all_skills = load_df(ALL_SKILLS)["name"].tolist()
+market_df = load_df(MARKET_DEMAND)
+market_dict = dict(zip(market_df["name"], market_df["demand_count"]))
 
-with tab2:
-    st.subheader("스킬 갭")
-    skill_gap.render(selected_tech)
+# ── 사용자 입력 ─────────────────────────────────────────────
+user_skills = st.multiselect("보유 기술 선택", all_skills)
 
-with tab3:
-    st.subheader("회사 추천")
-    company_recommend.render(selected_tech)
+st.divider()
+
+# ── 페이지 렌더링 ───────────────────────────────────────────
+market_value_page.render(user_skills, all_skills, market_dict)
+
+st.divider()
+
+skill_gap_page.render(user_skills)
+
+st.divider()
+
+company_recommend_page.render(user_skills)
