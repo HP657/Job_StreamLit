@@ -61,8 +61,15 @@ def render(user_skill_map):
     
     # 5. 분석 인사이트 추가
     st.write("### 💡 학습 우선순위 제언")
-    for i, row in market_df.iterrows():
+    
+    # 컬럼이 확실히 존재하는지 확인하고 순회
+    for i in range(len(market_df)):
+        skill = market_df.iloc[i]['skill']
+        percentage = market_df.iloc[i]['percentage']
+        
         # 숙련도가 없거나 0.5(초급)일 경우 우선 학습 추천
-        if user_skill_map.get(row['skill'], 0.0) < 1.0:
-            level_text = "미보유" if user_skill_map.get(row['skill'], 0.0) == 0.0 else "초급"
-            st.warning(f"**{row['skill']}** ({level_text}): 시장 중요도 {row['percentage']:.1%}인 핵심 기술입니다. 숙련도를 높이는 것을 추천합니다.")
+        current_skill_level = user_skill_map.get(skill, 0.0)
+        
+        if current_skill_level < 1.0:
+            level_text = "미보유" if current_skill_level == 0.0 else "초급"
+            st.warning(f"**{skill}** ({level_text}): 시장 중요도 {percentage:.1%}인 핵심 기술입니다. 숙련도를 높이는 것을 추천합니다.")
