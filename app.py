@@ -2,13 +2,13 @@ import streamlit as st
 from db import load_df
 from utils.queries import ALL_SKILLS, MARKET_DEMAND
 
-# 페이지 import (파일 경로가 정확한지 확인하세요)
+# 페이지 import
 import pages.market_value as market_value_page
 import pages.skill_gap as skill_gap_page
 import pages.company_recommend as company_recommend_page
 import pages.trend_analysis as trend_analysis_page
 import pages.skill_network as skill_network_page
-import pages.company_heatmap as company_heatmap_page # 추가
+import pages.company_heatmap as company_heatmap_page
 
 st.set_page_config(page_title="개발자 커리어 대시보드", layout="wide")
 st.title("🚀 개발자 맞춤형 커리어 분석 대시보드")
@@ -35,7 +35,7 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🔗 기술 연관성 네트워크",
     "💰 나의 시장 가치",
     "🏢 기업 맞춤 분석",
-    "🏢 기업 기술 DNA" # 추가된 히트맵 탭
+    "🏢 기업 기술 DNA"
 ])
 
 with tab1:
