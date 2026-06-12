@@ -1,63 +1,54 @@
 import streamlit as st
 import plotly.express as px
 from db import load_df
+from utils.queries import COMPANY_SKILLS
+from utils.recommendation import get_recommended_companies
 
-def get_company_analysis_data():
-    # 기업별 요구 기술 개수(난이도)와 채용 공고 빈도(활성도) 계산
-    query = """
-    SELECT jo.company_name, 
-           COUNT(DISTINCT jos.skill_id) as tech_difficulty,
-           COUNT(jo.id) as recruitment_activity
-    FROM job_openings jo
-    JOIN job_opening_skills jos ON jo.id = jos.job_opening_id
-    GROUP BY jo.company_name
-    """
-    return load_df(query)
+def render(user_skills: list[str]) -> None:
+    st.header("🏢 추천 기업")
 
-def render(user_skill_map):
-    st.header("🏢 기업별 맞춤 채용 분석")
-    df = get_company_analysis_data()
-    
-    if df.empty:
-        st.warning("분석할 기업 데이터가 없습니다.")
+    if not user_skills:
+        st.info("사이드바에서 보유 기술을 선택하면 추천 기업이 표시됩니다.")
         return
 
-    # 1. 데이터 요약 표 유지
-    st.subheader("📋 기업별 상세 분석 데이터")
-    # 컬럼명을 보기 좋게 변경
-    display_df = df.rename(columns={
-        "company_name": "기업명", 
-        "tech_difficulty": "기술 난이도", 
-        "recruitment_activity": "채용 활성도"
-    })
-    st.dataframe(display_df.sort_values("채용 활성도", ascending=False), use_container_width=True)
+    # 1. 데이터 로드 및 정렬
+    company_df = load_df(COMPANY_SKILLS)
+    recommend_df = get_recommended_companies(user_skills, company_df)
 
-    # 2. 산점도 그래프 (표 아래에 배치)
-    st.subheader("💡 기업별 난이도 vs 활성도 시각화")
-    fig = px.scatter(
-        df, 
-        x="tech_difficulty", 
-        y="recruitment_activity", 
-        text="company_name",
-        size="recruitment_activity",
-        color="tech_difficulty",
-        color_continuous_scale="Viridis",
+    if recommend_df.empty:
+        st.warning("추천 가능한 기업 데이터가 없습니다.")
+        return
+
+    recommend_df = recommend_df.sort_values(by="매칭도", ascending=False)
+
+    # 2. 강조 문구
+    top = recommend_df.iloc[0]
+    st.success(f"가장 적합한 기업: {top['회사']} (매칭도 {top['매칭도']}%)")
+
+    # 3. 매칭도 시각화 (상단 그래프)
+    st.subheader("📊 기업별 매칭도 비교")
+    fig = px.bar(
+        recommend_df.head(10), 
+        x="매칭도", 
+        y="회사", 
+        orientation='h',
+        color="매칭도",
+        color_continuous_scale="Blues",
+        text="매칭도",
         template="plotly_dark"
     )
     
-    fig.update_traces(textposition='top center', marker=dict(line=dict(width=1, color='white')))
+    fig.update_traces(texttemplate='%{text}%', textposition='outside')
     fig.update_layout(
-        xaxis_title="기술 요구 난이도 (요구 스택 수)",
-        yaxis_title="채용 활성도 (공고 빈도)",
+        yaxis=dict(autorange="reversed"),
+        xaxis_title="매칭도 (%)",
+        yaxis_title="기업명",
         plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)'
+        paper_bgcolor='rgba(0,0,0,0)',
+        height=500
     )
-    
     st.plotly_chart(fig, use_container_width=True)
-    
-    st.info("""
-    💡 **전략 가이드:**
-    * **좌상단:** 주니어 친화적이며 합격률이 높은 '공략 추천 기업'.
-    * **우상단:** 기술적 성장이 빠르고 수요가 많은 '성장형 핵심 기업'.
-    * **우하단:** 특정 기술 전문가를 우대하는 '니치 마켓 기업'.
-    """)
+
+    # 4. 상세 데이터 표 (하단부 유지)
+    st.subheader("📋 상세 분석 데이터")
+    st.dataframe(recommend_df, use_container_width=True)
