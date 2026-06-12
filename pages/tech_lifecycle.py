@@ -1,12 +1,11 @@
 import streamlit as st
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import plotly.express as px
 from db import load_df
 
 def get_lifecycle_data():
-    # 월별/기술별 채용 공고 수 추출
+    # PostgreSQL 기준, 날짜를 'YYYY-MM' 형식의 문자열로 변환하여 뭉침 현상 방지
     query = """
-    SELECT DATE_TRUNC('month', jo.created_at) AS month, s.name as skill_name, COUNT(*) as count
+    SELECT TO_CHAR(jo.created_at, 'YYYY-MM') AS month, s.name as skill_name, COUNT(*) as count
     FROM job_openings jo
     JOIN job_opening_skills jos ON jo.id = jos.job_opening_id
     JOIN skills s ON s.id = jos.skill_id
@@ -23,23 +22,26 @@ def render():
         st.warning("데이터가 부족합니다.")
         return
 
-    # 상위 5개 주요 기술만 필터링하여 시각화
-    top_skills = df.groupby('skill_name')['count'].sum().nlargest(5).index
-    df_filtered = df[df['skill_name'].isin(top_skills)]
+    # 데이터 정렬 확인
+    df = df.sort_values(by='month')
 
-    # 이중 축 차트 생성 (선 그래프)
-    fig = go.Figure()
-    for skill in top_skills:
-        skill_data = df_filtered[df_filtered['skill_name'] == skill]
-        fig.add_trace(go.Scatter(x=skill_data['month'], y=skill_data['count'], mode='lines+markers', name=skill))
+    # Plotly Express를 사용하여 훨씬 쉽게 선 그래프 생성
+    # markers=True를 통해 추세를 더 명확히 함
+    fig = px.line(
+        df[df['skill_name'].isin(df.groupby('skill_name')['count'].sum().nlargest(5).index)],
+        x="month", 
+        y="count", 
+        color="skill_name",
+        markers=True,
+        title="기술 스택별 채용 수요 추이 (월간)"
+    )
 
     fig.update_layout(
-        title="주요 기술 스택의 시간 흐름에 따른 수요 변화",
-        xaxis_title="기간",
-        yaxis_title="채용 공고 수",
-        hovermode="x unified",
-        template="plotly_dark"
+        xaxis_title="기간 (월)",
+        yaxis_title="공고 수",
+        template="plotly_dark",
+        hovermode="x unified"
     )
     
     st.plotly_chart(fig, use_container_width=True)
-    st.info("💡 **해석 가이드:** 우상향 곡선은 '성장기/성숙기' 기술, 하향 곡선은 '쇠퇴기' 기술로 판단하여 학습 우선순위를 조정하세요.")
+    st.info("💡 **해석:** 그래프가 지속적으로 우상향하면 '성장 중', 하향 곡선을 그리면 '쇠퇴 중'인 기술로 판단할 수 있습니다.")
