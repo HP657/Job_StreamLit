@@ -1,7 +1,8 @@
 import plotly.graph_objects as go
 import streamlit as st
 
-from utils.analysis import render_sidebar_filters, safe_load_df
+from db import load_df
+from utils.analysis import render_sidebar_filters
 
 
 def render() -> None:
@@ -20,7 +21,7 @@ def render() -> None:
     ORDER BY 1, 2
     """
 
-    lifecycle_df = safe_load_df(query)
+    lifecycle_df = load_df(query)
     if lifecycle_df.empty:
         st.info("기술 생애주기 데이터를 불러올 수 없습니다.")
         return
