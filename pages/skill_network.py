@@ -5,7 +5,6 @@ import networkx as nx
 from db import load_df
 
 def get_network_data():
-    # 동일 공고에서 함께 등장한 스킬 쌍 추출 (쿼리 [3]번 응용)
     query = """
     SELECT s1.name AS skill1, s2.name AS skill2, COUNT(*) AS freq
     FROM job_opening_skills jos1
@@ -15,47 +14,51 @@ def get_network_data():
     JOIN skills s2 ON jos2.skill_id = s2.id
     GROUP BY s1.name, s2.name
     ORDER BY freq DESC
-    LIMIT 30
+    LIMIT 40  -- 데이터를 조금 더 확보하여 관계를 명확히 함
     """
     return load_df(query)
 
-def render():
+def render(user_skill_map):
     st.header("🔗 기술 연관성 네트워크")
     
     df = get_network_data()
-    if df.empty:
-        st.warning("데이터가 없습니다.")
-        return
+    if df.empty: return
 
-    # 네트워크 생성
     G = nx.from_pandas_edgelist(df, 'skill1', 'skill2', ['freq'])
-    pos = nx.spring_layout(G, seed=42)
+    pos = nx.spring_layout(G, k=0.5, seed=42) # k값 조절로 노드 간격 확보
 
-    # 엣지(선) 그리기
-    edge_x, edge_y = [], []
-    for edge in G.edges():
-        x0, y0 = pos[edge[0]]
-        x1, y1 = pos[edge[1]]
-        edge_x.extend([x0, x1, None])
-        edge_y.extend([y0, y1, None])
+    # 1. 엣지(선) 그리기: 빈도에 따라 굵기 조절
+    edge_x, edge_y, edge_width = [], [], []
+    for u, v, d in G.edges(data=True):
+        edge_x.extend([pos[u][0], pos[v][0], None])
+        edge_y.extend([pos[u][1], pos[v][1], None])
+        edge_width.append(d['freq'] * 0.1) # 빈도에 따른 굵기
 
-    edge_trace = go.Scatter(x=edge_x, y=edge_y, line=dict(width=0.5, color='#888'), hoverinfo='none', mode='lines')
+    edge_trace = go.Scatter(x=edge_x, y=edge_y, line=dict(width=1, color='#555'), mode='lines')
 
-    # 노드(점) 그리기
-    node_x, node_y, node_text = [], [], []
+    # 2. 노드(점) 그리기: 내 기술이면 강조
+    node_x, node_y, node_text, node_color, node_size = [], [], [], [], []
     for node in G.nodes():
-        x, y = pos[node]
-        node_x.append(x)
-        node_y.append(y)
+        node_x.append(pos[node][0])
+        node_y.append(pos[node][1])
         node_text.append(node)
+        
+        # 강조 로직: 내 기술이면 빨간색, 아니면 하늘색
+        if node in user_skill_map:
+            node_color.append('#FF4B4B') # 강조색
+            node_size.append(20)          # 더 크게
+        else:
+            node_color.append('skyblue')
+            node_size.append(12)
 
     node_trace = go.Scatter(x=node_x, y=node_y, mode='markers+text', text=node_text,
-                            textposition="top center", hoverinfo='text',
-                            marker=dict(size=10, color='skyblue'))
+                            textposition="top center", marker=dict(size=node_size, color=node_color))
 
-    # 그래프 렌더링
     fig = go.Figure(data=[edge_trace, node_trace],
-                    layout=go.Layout(showlegend=False, hovermode='closest', margin=dict(b=0, l=0, r=0, t=0)))
+                    layout=go.Layout(showlegend=False, margin=dict(t=20, b=20, l=20, r=20),
+                                     plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+                                     xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                                     yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
     
     st.plotly_chart(fig, use_container_width=True)
-    st.info("선이 굵거나 가깝게 위치한 기술들은 함께 사용될 확률이 높습니다. 이를 통해 함께 배우면 좋은 스킬 패키지를 확인하세요!")
+    st.info("🔴 빨간 점: 보유 중인 기술 | 🔵 파란 점: 함께 학습하면 좋은 기술")
