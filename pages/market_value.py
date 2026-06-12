@@ -71,7 +71,6 @@ def render(user_skills: list[str], all_skills: list[str], market_dict: dict) -> 
         size="demand", 
         color="선택 여부",
         hover_name="skill_name",
-        # 이전의 보기 편한 색상으로 복구
         color_discrete_map={'나의 기술': '#FF4B4B', '기타 기술': '#1f77b4'}, 
         size_max=50,
         template="plotly_dark",
