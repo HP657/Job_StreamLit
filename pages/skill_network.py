@@ -14,7 +14,7 @@ def get_network_data():
     JOIN skills s2 ON jos2.skill_id = s2.id
     GROUP BY s1.name, s2.name
     ORDER BY freq DESC
-    LIMIT 40  -- 데이터를 조금 더 확보하여 관계를 명확히 함
+    LIMIT 35  -- 노드 수를 적절히 제한하여 가독성 확보
     """
     return load_df(query)
 
@@ -22,43 +22,67 @@ def render(user_skill_map):
     st.header("🔗 기술 연관성 네트워크")
     
     df = get_network_data()
-    if df.empty: return
+    if df.empty:
+        st.warning("데이터가 없습니다.")
+        return
 
+    # 네트워크 생성
     G = nx.from_pandas_edgelist(df, 'skill1', 'skill2', ['freq'])
-    pos = nx.spring_layout(G, k=0.5, seed=42) # k값 조절로 노드 간격 확보
+    
+    # 노드 간격과 배치 최적화 (k값이 클수록 노드가 멀어짐)
+    pos = nx.spring_layout(G, k=1.0, iterations=100, seed=42)
 
-    # 1. 엣지(선) 그리기: 빈도에 따라 굵기 조절
-    edge_x, edge_y, edge_width = [], [], []
-    for u, v, d in G.edges(data=True):
+    # 엣지(선) 그리기
+    edge_x, edge_y = [], []
+    for u, v in G.edges():
         edge_x.extend([pos[u][0], pos[v][0], None])
         edge_y.extend([pos[u][1], pos[v][1], None])
-        edge_width.append(d['freq'] * 0.1) # 빈도에 따른 굵기
+    
+    edge_trace = go.Scatter(x=edge_x, y=edge_y, line=dict(width=0.7, color='#777'), mode='lines', hoverinfo='none')
 
-    edge_trace = go.Scatter(x=edge_x, y=edge_y, line=dict(width=1, color='#555'), mode='lines')
+    # 노드(점) 그리기
+    node_x, node_y, node_color, node_size, node_text = [], [], [], [], []
+    my_skills = list(user_skill_map.keys())
 
-    # 2. 노드(점) 그리기: 내 기술이면 강조
-    node_x, node_y, node_text, node_color, node_size = [], [], [], [], []
     for node in G.nodes():
         node_x.append(pos[node][0])
         node_y.append(pos[node][1])
         node_text.append(node)
         
-        # 강조 로직: 내 기술이면 빨간색, 아니면 하늘색
-        if node in user_skill_map:
-            node_color.append('#FF4B4B') # 강조색
-            node_size.append(20)          # 더 크게
+        # 색상 및 크기 로직
+        if node in my_skills:
+            node_color.append('#FF4B4B') # 보유 기술: 빨강
+            node_size.append(18)
+        elif any(neighbor in my_skills for neighbor in G.neighbors(node)):
+            node_color.append('#00FFCC') # 추천 기술: 민트
+            node_size.append(14)
         else:
-            node_color.append('skyblue')
-            node_size.append(12)
+            node_color.append('#4A90E2') # 일반 기술: 파랑
+            node_size.append(10)
 
-    node_trace = go.Scatter(x=node_x, y=node_y, mode='markers+text', text=node_text,
-                            textposition="top center", marker=dict(size=node_size, color=node_color))
+    node_trace = go.Scatter(
+        x=node_x, y=node_y, mode='markers+text', text=node_text,
+        textposition="top center", textfont=dict(size=13, color='white'),
+        hoverinfo='text', marker=dict(size=node_size, color=node_color, line=dict(width=1.5, color='white'))
+    )
 
+    # 그래프 렌더링
     fig = go.Figure(data=[edge_trace, node_trace],
-                    layout=go.Layout(showlegend=False, margin=dict(t=20, b=20, l=20, r=20),
-                                     plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-                                     xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                                     yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
+                    layout=go.Layout(
+                        showlegend=False, hovermode='closest', 
+                        margin=dict(t=50, b=50, l=50, r=50),
+                        plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+                    ))
     
     st.plotly_chart(fig, use_container_width=True)
-    st.info("🔴 빨간 점: 보유 중인 기술 | 🔵 파란 점: 함께 학습하면 좋은 기술")
+    
+    # 구분 범례
+    st.markdown("""
+    <div style="display: flex; gap: 20px; justify-content: center; padding: 10px; background: #262730; border-radius: 10px;">
+        <span>🔴 <b>보유 기술</b></span>
+        <span>🟢 <b>추천 기술</b></span>
+        <span>🔵 <b>기타 연관 기술</b></span>
+    </div>
+    """, unsafe_allow_html=True)
