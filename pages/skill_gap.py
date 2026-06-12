@@ -1,9 +1,10 @@
 import plotly.graph_objects as go
 import streamlit as st
 
-from db import load_df
-from utils.analysis import render_sidebar_filters
-from utils.queries import MARKET_DEMAND
+from utils.analysis import safe_load_df
+from utils.queries import SKILL_NETWORK, SKILL_ID_MAP
+from utils.recommendation import get_recommended_skills
+from utils.graphs import build_network_graph
 
 
 def render(user_skills: list[str]) -> None:
@@ -14,10 +15,10 @@ def render(user_skills: list[str]) -> None:
         st.info("보유 기술을 선택하면 역량 갭 분석이 표시됩니다.")
         return
 
-    market_df = load_df(MARKET_DEMAND)
-    if market_df.empty:
-        st.info("시장 수요 데이터를 불러올 수 없습니다.")
-        return
+    network_df = safe_load_df(SKILL_NETWORK)
+    skill_map_df = safe_load_df(SKILL_ID_MAP)
+    id_to_name = dict(zip(skill_map_df["id"], skill_map_df["name"]))
+    name_to_id = dict(zip(skill_map_df["name"], skill_map_df["id"]))
 
     market_df = market_df.rename(columns={"name": "skill", "demand_count": "market_demand"})
     market_df = market_df[market_df["skill"].isin(user_skills)].copy()

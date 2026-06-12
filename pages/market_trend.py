@@ -2,13 +2,12 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from db import load_df
-from utils.analysis import filter_period, limit_top_n, render_sidebar_filters
+from utils.analysis import render_sidebar_filters, safe_load_df
 
 
 def render() -> None:
     st.header("📈 시장 기술 트렌드")
-    category, period, top_n = render_sidebar_filters(default_top_n=5)
+    _, _, top_n = render_sidebar_filters(default_top_n=5)
 
     query = """
     SELECT
@@ -22,14 +21,9 @@ def render() -> None:
     ORDER BY 1, 2
     """
 
-    trend_df = load_df(query)
+    trend_df = safe_load_df(query)
     if trend_df.empty:
         st.info("기술 트렌드 데이터를 불러올 수 없습니다.")
-        return
-
-    trend_df = filter_period(trend_df, "month", period)
-    if trend_df.empty:
-        st.info("선택한 기간에 해당하는 데이터가 없습니다.")
         return
 
     top_skills = (
@@ -44,21 +38,12 @@ def render() -> None:
         return
 
     trend_df = trend_df[trend_df["skill"].isin(top_skills)].copy()
-    other_df = (
-        trend_df.groupby("month", as_index=False)["demand_count"]
-        .sum()
-        .rename(columns={"demand_count": "기타"})
-    )
-    other_df["기타"] = 0
+    month_df = trend_df.groupby(["month", "skill"], as_index=False)["demand_count"].sum()
 
     fig = go.Figure()
     for skill in top_skills:
-        skill_df = trend_df[trend_df["skill"] == skill].groupby("month", as_index=False)["demand_count"].sum()
+        skill_df = month_df[month_df["skill"] == skill].sort_values("month")
         fig.add_trace(go.Scatter(x=skill_df["month"], y=skill_df["demand_count"], mode="lines", stackgroup="one", name=skill, hovertemplate="%{x}<br>%{fullData.name}: %{y}<extra></extra>"))
-
-    fig.add_trace(go.Scatter(x=other_df["month"], y=other_df["기타"], mode="lines", stackgroup="one", name="기타", line=dict(dash="dot"), hovertemplate="%{x}<br>기타: %{y}<extra></extra>"))
 
     fig.update_layout(title="월별 기술 점유율 변화", xaxis_title="월", yaxis_title="누적 공고 수", hovermode="x unified", template="plotly_white")
     st.plotly_chart(fig, use_container_width=True)
-
-    st.caption("※ 상위 N개 기술만 누적하여 표시하고, 나머지는 '기타'로 묶어 데이터 과부하를 줄였습니다.")
