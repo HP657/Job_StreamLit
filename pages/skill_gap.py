@@ -3,7 +3,6 @@ import streamlit as st
 from db import load_df
 from utils.queries import SKILL_NETWORK, SKILL_ID_MAP
 from utils.recommendation import get_recommended_skills
-from utils.graphs import build_network_graph
 
 
 def render(user_skills: list[str]) -> None:
@@ -27,6 +26,3 @@ def render(user_skills: list[str]) -> None:
 
     st.dataframe(recommend_skills, use_container_width=True)
     st.success(f"가장 추천되는 기술: {recommend_skills.iloc[0]['기술']}")
-
-    st.subheader("🔗 기술 연관성 네트워크")
-    st.plotly_chart(build_network_graph(network_df, id_to_name), use_container_width=True)
