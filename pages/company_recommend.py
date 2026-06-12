@@ -1,14 +1,11 @@
 import streamlit as st
 
 from db import load_df
-<<<<<<< Updated upstream
-from utils.queries import COMPANY_SKILLS, EXPERIENCE_SKILL_COUNT
-=======
 from utils.queries import COMPANY_SKILLS
 import pages.company_dna as company_dna_page
 import pages.experience_skill as experience_skill_page
 import pages.tech_lifecycle as tech_lifecycle_page
->>>>>>> Stashed changes
+from utils.queries import COMPANY_SKILLS
 from utils.recommendation import get_recommended_companies
 
 
@@ -19,7 +16,7 @@ def render(user_skills: list[str]) -> None:
         st.info("보유 기술을 선택하면 추천 기업이 표시됩니다.")
         return
 
-    company_df = safe_load_df(COMPANY_SKILLS)
+    company_df = load_df(COMPANY_SKILLS)
     recommend_df = get_recommended_companies(user_skills, company_df)
 
     if recommend_df.empty:
