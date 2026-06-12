@@ -24,8 +24,8 @@ selected_skills = st.multiselect("보유 기술 선택", all_skills)
 
 user_skill_map = {}
 for skill in selected_skills:
-    # 0.5(초급) 또는 1.0(숙련) 선택
-    level = st.radio(f"{skill} 숙련도", ["초급", "숙련"], key=skill, horizontal=True)
+    # key값이 고유해야 합니다.
+    level = st.radio(f"{skill} 숙련도", ["초급", "숙련"], key=f"level_{skill}", horizontal=True)
     user_skill_map[skill] = 0.5 if level == "초급" else 1.0
 
 st.divider()
