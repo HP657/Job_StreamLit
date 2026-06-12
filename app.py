@@ -54,7 +54,7 @@ with tab5:
     company_recommend_page.render(user_skill_map)
 
 with tab6:
-    company_heatmap_page.render() # 렌더링 호출
+    company_heatmap_page.render(user_skill_map)
 
 st.markdown("---")
 st.caption("본 대시보드는 실시간 채용 공고 데이터를 분석하여 최적의 학습 경로를 제시합니다.")
