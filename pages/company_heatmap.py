@@ -4,18 +4,24 @@ import pandas as pd
 from db import load_df
 
 def get_heatmap_data(user_skill_map):
-    # 선택된 기술이 없으면 빈 딕셔너리 방지
     selected_skills = list(user_skill_map.keys())
     
-    # 쿼리 생성
+    # 1. 파라미터 바인딩을 위한 준비
+    params = []
     if selected_skills:
         skill_name = selected_skills[0]
-        order_by = f"""(SELECT COUNT(*) FROM job_opening_skills jos2 
-                       JOIN skills s2 ON jos2.skill_id = s2.id 
-                       WHERE jos2.job_opening_id = jo.id AND s2.name = '{skill_name}') DESC"""
+        # 기술이 포함된 정렬 쿼리 (파라미터 사용)
+        order_by = """
+        (SELECT COUNT(*) FROM job_opening_skills jos2 
+         JOIN skills s2 ON jos2.skill_id = s2.id 
+         WHERE jos2.job_opening_id = jo.id AND s2.name = ?) DESC, 
+        COUNT(*) DESC
+        """
+        params.append(skill_name)
     else:
         order_by = "COUNT(*) DESC"
 
+    # 2. 쿼리 구성
     query = f"""
     WITH TargetCompanies AS (
         SELECT company_name FROM job_openings 
@@ -35,7 +41,9 @@ def get_heatmap_data(user_skill_map):
       AND s.name IN (SELECT name FROM TargetSkills)
     GROUP BY jo.company_name, s.name
     """
-    return load_df(query)
+    
+    # 3. load_df에 params 전달
+    return load_df(query, params=params)
 
 def render(user_skill_map):
     st.header("🏢 기업별 핵심 기술 DNA 분석")
@@ -43,7 +51,7 @@ def render(user_skill_map):
     df = get_heatmap_data(user_skill_map)
     
     if df.empty:
-        st.warning("분석할 데이터가 부족합니다. 사이드바에서 기술을 선택하거나 다른 탭을 확인해 주세요.")
+        st.warning("분석할 데이터가 부족합니다.")
         return
 
     heatmap_df = df.pivot(index='company_name', columns='skill_name', values='count').fillna(0)
@@ -62,4 +70,4 @@ def render(user_skill_map):
     )
     
     st.plotly_chart(fig, use_container_width=True)
-    st.info("💡 선택한 기술이 있을 경우 해당 기술 빈도순, 없을 경우 전체 공고 많은 순으로 기업이 정렬됩니다.")
+    st.info("💡 선택한 기술이 있을 경우 해당 기술 빈도순, 없을 경우 전체 공고 많은 순으로 정렬됩니다.")
