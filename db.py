@@ -17,4 +17,8 @@ engine = create_engine(
 
 @st.cache_data(ttl=300)
 def load_df(query: str, params=None) -> pd.DataFrame:
-    return pd.read_sql(query, engine, params=params)
+    # params가 존재할 때만 전달하고, 없으면 query만 전달하도록 개선
+    if params:
+        return pd.read_sql(query, engine, params=params)
+    else:
+        return pd.read_sql(query, engine)
