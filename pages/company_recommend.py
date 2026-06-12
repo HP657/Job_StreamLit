@@ -1,9 +1,8 @@
 import streamlit as st
 
 from db import load_df
-from utils.queries import COMPANY_SKILLS, EXPERIENCE_SKILL_COUNT
+from utils.queries import COMPANY_SKILLS
 from utils.recommendation import get_recommended_companies
-from utils.graphs import build_company_heatmap, build_experience_bar_chart
 
 
 def render(user_skills: list[str]) -> None:
@@ -21,13 +20,6 @@ def render(user_skills: list[str]) -> None:
         return
 
     st.dataframe(recommend_df, use_container_width=True)
-
-    st.subheader("🧬 기업별 기술 DNA")
-    st.plotly_chart(build_company_heatmap(company_df), use_container_width=True)
-
-    st.subheader("📊 경력 단계별 핵심 스킬 비교")
-    experience_df = load_df(EXPERIENCE_SKILL_COUNT)
-    st.plotly_chart(build_experience_bar_chart(experience_df), use_container_width=True)
 
     top = recommend_df.iloc[0]
     st.success(f"가장 적합한 기업: {top['회사']} (매칭도 {top['매칭도']}%)")
