@@ -6,7 +6,6 @@ from utils.queries import ALL_SKILLS, MARKET_DEMAND
 import pages.market_value as market_value_page
 import pages.skill_gap as skill_gap_page
 import pages.company_recommend as company_recommend_page
-import pages.trend_analysis as trend_analysis_page
 import pages.skill_network as skill_network_page
 import pages.company_heatmap as company_heatmap_page
 import pages.career_gap as career_gap_page
