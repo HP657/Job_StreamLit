@@ -9,7 +9,7 @@ def get_career_data():
     FROM job_openings jo
     JOIN job_opening_skills jos ON jo.id = jos.job_opening_id
     JOIN skills s ON s.id = jos.skill_id
-    WHERE jo.experience IN ('신입', '경력')
+    WHERE jo.experience IS NOT NULL
     GROUP BY s.name, jo.experience
     ORDER BY frequency DESC
     """
