@@ -39,17 +39,26 @@ def render(all_skills):
     skill_name = None if selected == "전체" else selected
     df = get_career_skills(skill_name)
     
+    df = get_career_data()
     if df.empty:
         st.warning("분석할 데이터가 없습니다.")
         return
 
-    # 그래프 그리기
+    # 그래프 생성
     fig = px.bar(
         df, x="name", y="count", color="experience_level",
         title=f"{selected if selected != '전체' else '전체 기술'} 관련 경력별 요구 스택",
         template="plotly_dark",
         barmode="group" # 그룹화된 막대 그래프로 가독성 개선
     )
+
+    fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=True, gridcolor='lightgray')
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
     
     fig.update_layout(
         xaxis_title="기술 스택",
