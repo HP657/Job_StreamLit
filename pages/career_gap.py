@@ -2,31 +2,17 @@ import streamlit as st
 import plotly.express as px
 from db import load_df
 
-def get_career_skills(selected_skill=None):
-    if selected_skill:
-        # 선택한 기술과 함께 등장하는 기술들(상위 15개)을 조회하는 쿼리
-        query = f"""
-        WITH RelatedJobs AS (
-            SELECT job_opening_id FROM job_opening_skills 
-            WHERE skill_id = (SELECT id FROM skills WHERE name = '{selected_skill}')
-        )
-        SELECT s.name, jo.experience_level, COUNT(*) as count
-        FROM job_opening_skills jos
-        JOIN skills s ON s.id = jos.skill_id
-        JOIN job_openings jo ON jo.id = jos.job_opening_id
-        WHERE jo.id IN (SELECT job_opening_id FROM RelatedJobs)
-        GROUP BY s.name, jo.experience_level
-        """
-    else:
-        # 평소에는 전체 상위 15개 기술만 조회
-        query = """
-        SELECT s.name, jo.experience_level, COUNT(*) as count
-        FROM job_opening_skills jos
-        JOIN skills s ON s.id = jos.skill_id
-        JOIN job_openings jo ON jo.id = jos.job_opening_id
-        WHERE s.name IN (SELECT name FROM skills ORDER BY id LIMIT 15)
-        GROUP BY s.name, jo.experience_level
-        """
+def get_career_data():
+    # 경력/신입 구분별 상위 5개 기술 분석
+    query = """
+    SELECT s.name AS skill_name, jo.experience, COUNT(*) AS frequency
+    FROM job_openings jo
+    JOIN job_opening_skills jos ON jo.id = jos.job_opening_id
+    JOIN skills s ON s.id = jos.skill_id
+    WHERE jo.experience IS NOT NULL
+    GROUP BY s.name, jo.experience
+    ORDER BY frequency DESC
+    """
     return load_df(query)
 
 def render(all_skills): # app.py에서 all_skills 리스트를 넘겨줘야 합니다
