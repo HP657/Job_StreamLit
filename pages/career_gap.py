@@ -2,44 +2,52 @@ import streamlit as st
 import plotly.express as px
 from db import load_df
 
-def get_career_data():
-    # 경력/신입 구분별 상위 5개 기술 분석
-    query = """
-    SELECT s.name AS skill_name, jo.experience, COUNT(*) AS frequency
-    FROM job_openings jo
-    JOIN job_opening_skills jos ON jo.id = jos.job_opening_id
-    JOIN skills s ON s.id = jos.skill_id
-    WHERE jo.experience IN ('신입', '경력')
-    GROUP BY s.name, jo.experience
-    ORDER BY frequency DESC
-    """
+def get_career_skills(selected_skill=None):
+    if selected_skill:
+        # 선택한 기술과 함께 등장하는 기술들(상위 15개)을 조회하는 쿼리
+        query = f"""
+        WITH RelatedJobs AS (
+            SELECT job_opening_id FROM job_opening_skills 
+            WHERE skill_id = (SELECT id FROM skills WHERE name = '{selected_skill}')
+        )
+        SELECT s.name, jo.experience_level, COUNT(*) as count
+        FROM job_opening_skills jos
+        JOIN skills s ON s.id = jos.skill_id
+        JOIN job_openings jo ON jo.id = jos.job_opening_id
+        WHERE jo.id IN (SELECT job_opening_id FROM RelatedJobs)
+        GROUP BY s.name, jo.experience_level
+        """
+    else:
+        # 평소에는 전체 상위 15개 기술만 조회
+        query = """
+        SELECT s.name, jo.experience_level, COUNT(*) as count
+        FROM job_opening_skills jos
+        JOIN skills s ON s.id = jos.skill_id
+        JOIN job_openings jo ON jo.id = jos.job_opening_id
+        WHERE s.name IN (SELECT name FROM skills ORDER BY id LIMIT 15)
+        GROUP BY s.name, jo.experience_level
+        """
     return load_df(query)
 
-def render():
-    st.header("📊 경력 단계별 핵심 스킬 분석")
+def render(all_skills): # app.py에서 all_skills 리스트를 넘겨줘야 합니다
+    st.header("📈 경력 단계별 핵심 스킬 분석")
     
-    df = get_career_data()
+    # 사이드바에서 기술 선택
+    selected = st.selectbox("분석할 기술 선택 (선택 안 하면 상위 기술 표시)", ["전체"] + all_skills)
+    
+    skill_name = None if selected == "전체" else selected
+    df = get_career_skills(skill_name)
+    
     if df.empty:
-        st.warning("경력 데이터가 없습니다.")
+        st.warning("데이터가 없습니다.")
         return
 
-    # 그래프 생성
+    # 그래프 그리기
     fig = px.bar(
-        df, 
-        x="skill_name", 
-        y="frequency", 
-        color="experience", 
-        barmode="group",
-        title="신입 vs 경력직 선호 기술 비교",
-        labels={"frequency": "공고 언급 횟수", "skill_name": "기술 스택", "experience": "경력 구분"}
+        df, x="name", y="count", color="experience_level",
+        title=f"{selected} 관련 핵심 스킬 비교",
+        template="plotly_dark",
+        barmode="stack"
     )
-
-    fig.update_layout(
-        plot_bgcolor='rgba(0,0,0,0)',
-        xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=True, gridcolor='lightgray')
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
     
-    st.info("신입 공고에서 유독 빈도가 높은 기술을 파악하여 취업 준비의 우선순위를 결정하세요.")
+    st.plotly_chart(fig, use_container_width=True)
