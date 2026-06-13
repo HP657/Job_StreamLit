@@ -1,39 +1,38 @@
 import streamlit as st
 import plotly.express as px
 import pandas as pd
-from sqlalchemy import text # 중요: text import 추가
-from db import engine # engine import 확인
+from sqlalchemy import text
+from db import engine
 
 def get_career_skills(selected_skill=None):
-    if selected_skill:
-        # SQL Injection 방지를 위해 text() 사용
-        sql = text("""
-        SELECT s.name, jo.experience_level, COUNT(*) as count
-        FROM job_opening_skills jos
-        JOIN skills s ON s.id = jos.skill_id
-        JOIN job_openings jo ON jo.id = jos.job_opening_id
-        WHERE jo.id IN (
-            SELECT job_opening_id FROM job_opening_skills 
-            JOIN skills ON skills.id = job_opening_skills.skill_id
-            WHERE skills.name = :skill_name
-        )
-        GROUP BY s.name, jo.experience_level
-        LIMIT 20
-        """)
-        # engine을 사용하여 쿼리 실행
-        with engine.connect() as conn:
+    # 연결을 안전하게 열고 pandas가 직접 실행하도록 구성
+    with engine.connect() as conn:
+        if selected_skill:
+            sql = text("""
+            SELECT s.name, jo.experience_level, COUNT(*) as count
+            FROM job_opening_skills jos
+            JOIN skills s ON s.id = jos.skill_id
+            JOIN job_openings jo ON jo.id = jos.job_opening_id
+            WHERE jo.id IN (
+                SELECT job_opening_id FROM job_opening_skills 
+                JOIN skills ON skills.id = job_opening_skills.skill_id
+                WHERE skills.name = :skill_name
+            )
+            GROUP BY s.name, jo.experience_level
+            LIMIT 20
+            """)
+            # params를 전달할 때 text() 객체와 함께 전달
             return pd.read_sql(sql, conn, params={"skill_name": selected_skill})
-    else:
-        sql = text("""
-        SELECT s.name, jo.experience_level, COUNT(*) as count
-        FROM job_opening_skills jos
-        JOIN skills s ON s.id = jos.skill_id
-        JOIN job_openings jo ON jo.id = jos.job_opening_id
-        GROUP BY s.name, jo.experience_level
-        ORDER BY count DESC
-        LIMIT 15
-        """)
-        with engine.connect() as conn:
+        else:
+            sql = text("""
+            SELECT s.name, jo.experience_level, COUNT(*) as count
+            FROM job_opening_skills jos
+            JOIN skills s ON s.id = jos.skill_id
+            JOIN job_openings jo ON jo.id = jos.job_opening_id
+            GROUP BY s.name, jo.experience_level
+            ORDER BY count DESC
+            LIMIT 15
+            """)
             return pd.read_sql(sql, conn)
 
 def render(all_skills):
