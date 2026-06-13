@@ -15,25 +15,31 @@ def get_career_data():
     """
     return load_df(query)
 
-def render(all_skills): # app.py에서 all_skills 리스트를 넘겨줘야 합니다
-    st.header("📈 경력 단계별 핵심 스킬 분석")
+def render():
+    st.header("📊 경력 단계별 핵심 스킬 분석")
     
-    # 사이드바에서 기술 선택
-    selected = st.selectbox("분석할 기술 선택 (선택 안 하면 상위 기술 표시)", ["전체"] + all_skills)
-    
-    skill_name = None if selected == "전체" else selected
-    df = get_career_skills(skill_name)
-    
+    df = get_career_data()
     if df.empty:
-        st.warning("데이터가 없습니다.")
+        st.warning("경력 데이터가 없습니다.")
         return
 
-    # 그래프 그리기
+    # 그래프 생성
     fig = px.bar(
-        df, x="name", y="count", color="experience_level",
-        title=f"{selected} 관련 핵심 스킬 비교",
-        template="plotly_dark",
-        barmode="stack"
+        df, 
+        x="skill_name", 
+        y="frequency", 
+        color="experience", 
+        barmode="group",
+        title="신입 vs 경력직 선호 기술 비교",
+        labels={"frequency": "공고 언급 횟수", "skill_name": "기술 스택", "experience": "경력 구분"}
     )
-    
+
+    fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=True, gridcolor='lightgray')
+    )
+
     st.plotly_chart(fig, use_container_width=True)
+    
+    st.info("신입 공고에서 유독 빈도가 높은 기술을 파악하여 취업 준비의 우선순위를 결정하세요.")
