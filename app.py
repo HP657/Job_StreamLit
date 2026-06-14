@@ -5,7 +5,7 @@ from utils.queries import ALL_SKILLS, MARKET_DEMAND
 # 루트 디렉토리의 modules 폴더에서 호출
 from modules import market_value, skill_gap, company_recommend, skill_network, company_heatmap, career_gap
 
-st.set_page_config(page_title="개발자 커리어 대시보드", layout="wide")
+st.set_page_config(page_title="커리어 대시보드", layout="wide")
 
 # 사이드바 자동 메뉴 숨김 (파일 이름 안 보이게 함)
 st.markdown("""
