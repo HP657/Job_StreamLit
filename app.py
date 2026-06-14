@@ -14,7 +14,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🚀 개발자 맞춤형 커리어 분석 대시보드")
+st.title("🚀 커리어 분석 대시보드")
 
 # 데이터 로드
 all_skills = load_df(ALL_SKILLS)["name"].tolist()
