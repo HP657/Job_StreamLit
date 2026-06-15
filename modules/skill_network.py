@@ -21,7 +21,7 @@ def get_network_data():
 def render(user_skill_map):
     st.header("🔗 기술 연관성 네트워크")
     
-    # --- 태그 없는 깨끗한 설명 부분 ---
+    # [설명 추가] 이미지 태그 없이 텍스트로만 구성
     with st.expander("💡 기술 네트워크 분석 로직 자세히 보기"):
         st.markdown("""
         기술들 간의 동시 출현 빈도를 분석하여, 함께 학습하면 시너지가 나는 스택을 네트워크 그래프로 시각화합니다.
@@ -33,7 +33,6 @@ def render(user_skill_map):
         
         이 시각화를 통해 특정 기술을 학습할 때, 다음에 함께 학습하면 좋은 연관 기술을 직관적으로 파악할 수 있습니다.
         """)
-    # --------------------------------
 
     df = get_network_data()
     if df.empty:
