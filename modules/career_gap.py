@@ -34,6 +34,20 @@ def get_career_skills(selected_skill=None):
 
 def render(all_skills):
     st.header("📈 경력 단계별 핵심 스킬 분석")
+    st.header("📊 경력 단계별 분석")
+    
+    # [설명 추가] 로직 설명을 위한 expander
+    with st.expander("💡 경력 단계별 역량 분석 로직 자세히 보기"):
+        st.markdown("""
+        경력 연차에 따라 요구되는 기술 스택의 변화를 분석하여 커리어 성장 경로를 제시합니다.
+        
+        1. **데이터 그룹화**: 채용 공고를 경력별(신입/주니어/시니어)로 분류합니다.
+        2. **단계별 역량 추출**: 각 경력 단계에서 요구하는 상위 10개 핵심 기술을 집계합니다.
+        3. **커리어 로드맵**: 경력 상승에 따라 새롭게 추가되거나 중요도가 높아지는 기술 스택을 추적하여 시각화합니다.
+        
+        이 분석을 통해 사용자는 현재 단계에서 다음 커리어로 넘어가기 위해 필요한 '기술적 문턱'을 확인할 수 있습니다.
+        """)
+    
     selected = st.selectbox("분석할 기술 선택", ["전체"] + all_skills)
     skill_name = None if selected == "전체" else selected
     df = get_career_skills(skill_name)
