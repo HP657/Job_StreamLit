@@ -11,7 +11,7 @@ def render(user_skills: list[str]) -> None:
         st.info("사이드바에서 보유 기술을 선택하면 추천 기업이 표시됩니다.")
         return
 
-    # 1. 데이터 로드 및 정렬
+    # 데이터 로드
     company_df = load_df(COMPANY_SKILLS)
     recommend_df = get_recommended_companies(user_skills, company_df)
 
@@ -19,9 +19,10 @@ def render(user_skills: list[str]) -> None:
         st.warning("추천 가능한 기업 데이터가 없습니다.")
         return
 
+    # 매칭도 순 정렬
     recommend_df = recommend_df.sort_values(by="매칭도", ascending=False)
 
-    # --- 추가된 부분 (설명 로직) ---
+    # 1. 기업 추천 로직 토글 (이미지 태그 제거 및 안정성 확보)
     with st.expander("💡 기업 추천 알고리즘 로직 자세히 보기"):
         st.markdown("""
         이 대시보드는 다음과 같은 **4단계 데이터 과학 로직**을 통해 최적의 기업을 선정합니다.
@@ -38,15 +39,15 @@ def render(user_skills: list[str]) -> None:
            - '채용 공고의 최신성' 및 '기술 요구 빈도'를 계산하여 최신 트렌드를 반영합니다.
            
         4. **최종 랭킹 (Ranking)**
-           - 계산된 점수를 100점 만점으로 환산하여 가장 매칭률이 높은 기업을 추천합니다.
+           - 계산된 점수를 100점 만점으로 환산하여 높은 순으로 정렬합니다.
         """)
         
-    # ---------------------------
 
-    # 기존 출력 코드 유지
+    # 2. 결과 강조
     top = recommend_df.iloc[0]
     st.success(f"가장 적합한 기업: {top['회사']} (매칭도 {top['매칭도']}%)")
 
+    # 3. 매칭도 그래프 (상단 배치)
     st.subheader("📊 기업별 매칭도 비교")
     fig = px.bar(
         recommend_df.head(10), x="매칭도", y="회사", orientation='h',
@@ -56,5 +57,6 @@ def render(user_skills: list[str]) -> None:
     fig.update_layout(yaxis=dict(autorange="reversed"), xaxis_title="매칭도 (%)", yaxis_title="기업명")
     st.plotly_chart(fig, use_container_width=True)
 
+    # 4. 상세 데이터 표 (하단 배치)
     st.subheader("📋 상세 분석 데이터")
     st.dataframe(recommend_df, use_container_width=True)
