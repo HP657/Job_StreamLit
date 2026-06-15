@@ -22,19 +22,27 @@ all_skills = load_df(ALL_SKILLS)["name"].tolist()
 market_df = load_df(MARKET_DEMAND)
 market_dict = dict(zip(market_df["name"], market_df["demand_count"]))
 
-# 사이드바 프로필 설정 및 메뉴
-st.sidebar.header("👤 나의 프로필 설정")
-selected_skills = st.sidebar.multiselect("보유 기술 선택", all_skills)
-user_skill_map = {skill: 0.5 if st.sidebar.radio(f"{skill} 숙련도", ["초급", "숙련"], key=f"level_{skill}", horizontal=True) == "초급" else 1.0 for skill in selected_skills}
+# --- 사이드바 영역 ---
+st.sidebar.header("👤 나의 프로필")
+selected_skills = st.sidebar.multiselect("보유 기술 선택", all_skills, label_visibility="collapsed")
+
+user_skill_map = {}
+with st.sidebar.container(border=True):
+    st.caption("기술 숙련도 설정")
+    for skill in selected_skills:
+        level = st.radio(f"{skill}", ["초급", "숙련"], key=f"level_{skill}", horizontal=True)
+        user_skill_map[skill] = 0.5 if level == "초급" else 1.0
 
 st.sidebar.markdown("---")
-st.sidebar.header("📋 분석 대시보드")
+
+st.sidebar.markdown("### 📋 분석 대시보드")
 menu = st.sidebar.radio(
     "메뉴 선택",
-    ["🎯 역량 갭", "🔗 네트워크", "📊 경력 단계별 분석", "💰 시장 가치", "🏢 기업 추천", "🏢 기업 기술 DNA", "🏗️ 아키텍처"]
+    ["🎯 역량 갭", "🔗 네트워크", "📊 경력 단계별 분석", "💰 시장 가치", "🏢 기업 추천", "🏢 기업 기술 DNA", "🏗️ 아키텍처"],
+    label_visibility="collapsed"
 )
 
-# 메뉴별 렌더링
+# --- 메인 영역 렌더링 ---
 if menu == "🎯 역량 갭": 
     skill_gap.render(user_skill_map)
 elif menu == "🔗 네트워크": 
