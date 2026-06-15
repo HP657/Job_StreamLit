@@ -2,15 +2,22 @@ import streamlit as st
 from db import load_df
 from utils.queries import ALL_SKILLS, MARKET_DEMAND
 
-# 루트 디렉토리의 modules 폴더에서 호출
+# 모듈 호출
 from modules import market_value, skill_gap, company_recommend, skill_network, company_heatmap, career_gap, architecture
 
 st.set_page_config(page_title="커리어 대시보드", layout="wide")
 
-# 사이드바 자동 메뉴 숨김 (파일 이름 안 보이게 함)
+# 사이드바 메뉴 숨김 및 탭 스타일 최적화 (강제 표시)
 st.markdown("""
     <style>
-    [data-testid="stSidebarNav"] { display: none; }
+    /* 사이드바 네비게이션 숨김 */
+    [data-testid="stSidebarNav"] { display: none !important; }
+    
+    /* 탭 영역 강제 표시 및 레이아웃 최적화 */
+    [data-testid="stTabs"] { 
+        display: flex !important; 
+        flex-wrap: wrap !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
