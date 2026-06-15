@@ -21,34 +21,40 @@ def render(user_skills: list[str]) -> None:
 
     recommend_df = recommend_df.sort_values(by="매칭도", ascending=False)
 
-    # 2. 강조 문구
+    # --- 추가된 부분 (설명 로직) ---
+    with st.expander("💡 기업 추천 알고리즘 로직 자세히 보기"):
+        st.markdown("""
+        이 대시보드는 다음과 같은 **4단계 데이터 과학 로직**을 통해 최적의 기업을 선정합니다.
+        
+        1. **데이터 정규화 (Vectorization)**
+           - **사용자 벡터**: 보유 기술을 숙련도에 따라 0.5 ~ 1.0으로 매핑합니다.
+           - **기업 벡터**: 기업 공고의 기술 스택 비중을 분석하여 수치화합니다.
+           
+        2. **코사인 유사도 계산 (Similarity Calculation)**
+           - 두 벡터의 방향성을 측정하여 기술적 적합성을 계산합니다.
+           - 수식: $\\text{similarity} = \\cos(\\theta) = \\frac{\\mathbf{A} \\cdot \\mathbf{B}}{\\|\\mathbf{A}\\| \\|\\mathbf{B}\\|}$
+           
+        3. **가중치 반영 (Weighting)**
+           - '채용 공고의 최신성' 및 '기술 요구 빈도'를 계산하여 최신 트렌드를 반영합니다.
+           
+        4. **최종 랭킹 (Ranking)**
+           - 계산된 점수를 100점 만점으로 환산하여 가장 매칭률이 높은 기업을 추천합니다.
+        """)
+        
+    # ---------------------------
+
+    # 기존 출력 코드 유지
     top = recommend_df.iloc[0]
     st.success(f"가장 적합한 기업: {top['회사']} (매칭도 {top['매칭도']}%)")
 
-    # 3. 매칭도 시각화 (상단 그래프)
     st.subheader("📊 기업별 매칭도 비교")
     fig = px.bar(
-        recommend_df.head(10), 
-        x="매칭도", 
-        y="회사", 
-        orientation='h',
-        color="매칭도",
-        color_continuous_scale="Blues",
-        text="매칭도",
-        template="plotly_dark"
+        recommend_df.head(10), x="매칭도", y="회사", orientation='h',
+        color="매칭도", color_continuous_scale="Blues", text="매칭도", template="plotly_dark"
     )
-    
     fig.update_traces(texttemplate='%{text}%', textposition='outside')
-    fig.update_layout(
-        yaxis=dict(autorange="reversed"),
-        xaxis_title="매칭도 (%)",
-        yaxis_title="기업명",
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        height=500
-    )
+    fig.update_layout(yaxis=dict(autorange="reversed"), xaxis_title="매칭도 (%)", yaxis_title="기업명")
     st.plotly_chart(fig, use_container_width=True)
 
-    # 4. 상세 데이터 표 (하단부 유지)
     st.subheader("📋 상세 분석 데이터")
     st.dataframe(recommend_df, use_container_width=True)
