@@ -37,7 +37,7 @@ def render():
     if os.path.exists(image_path):
         st.image(image_path, caption="데이터 수집 대상: 잡플래닛 채용 페이지", use_column_width=True)
     else:
-        st.info("💡 채용 사이트 스크린샷 이미지를 추가할 공간입니다. 'jobplanet_screenshot.png' 파일을 업로드하면 여기에 표시됩니다.")
+        st.info(f"💡 이미지 파일을 찾을 수 없습니다. '{image_path}' 경로를 확인해주세요.")
 
     # 4. 상세 프로세스
     with st.expander("기술적 구현 상세 보기"):
