@@ -41,6 +41,17 @@ def get_heatmap_data(user_skill_map):
 def render(user_skill_map):
     st.header("🏢 기업별 핵심 기술 DNA 분석")
     
+    with st.expander("💡 기업 기술 DNA 분석 로직 자세히 보기"):
+        st.markdown("""
+        기업별 채용 공고에 등장하는 기술 스택의 분포를 분석하여, 각 기업의 기술적 특성과 문화를 파악합니다.
+        
+        1. **기업-기술 행렬 생성**: 채용 데이터를 기반으로 기업별로 어떤 기술을 요구하는지 이진(Binary) 매핑합니다.
+        2. **밀도 분석 (Density Analysis)**: 특정 기업 내에서 기술 스택이 얼마나 집중되어 있는지 밀도를 계산합니다.
+        3. **기술 DNA 도출**: 기술별 출현 빈도를 히트맵으로 시각화하여, 해당 기업이 주력으로 사용하는 기술 스택(DNA)을 도출합니다.
+        
+        이 시각화를 통해 사용자는 목표 기업이 선호하는 최우선 학습 기술 스택을 직관적으로 확인할 수 있습니다.
+        """)
+    
     df = get_heatmap_data(user_skill_map)
     
     if df.empty:
