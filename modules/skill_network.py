@@ -14,14 +14,14 @@ def get_network_data():
     JOIN skills s2 ON jos2.skill_id = s2.id
     GROUP BY s1.name, s2.name
     ORDER BY freq DESC
-    LIMIT 35  -- 노드 수를 적절히 제한하여 가독성 확보
+    LIMIT 35
     """
     return load_df(query)
 
 def render(user_skill_map):
     st.header("🔗 기술 연관성 네트워크")
     
-    # --- 추가된 부분: 분석 로직 설명 ---
+    # --- 태그 없는 깨끗한 설명 부분 ---
     with st.expander("💡 기술 네트워크 분석 로직 자세히 보기"):
         st.markdown("""
         기술들 간의 동시 출현 빈도를 분석하여, 함께 학습하면 시너지가 나는 스택을 네트워크 그래프로 시각화합니다.
@@ -33,7 +33,6 @@ def render(user_skill_map):
         
         이 시각화를 통해 특정 기술을 학습할 때, 다음에 함께 학습하면 좋은 연관 기술을 직관적으로 파악할 수 있습니다.
         """)
-        
     # --------------------------------
 
     df = get_network_data()
@@ -43,8 +42,6 @@ def render(user_skill_map):
 
     # 네트워크 생성
     G = nx.from_pandas_edgelist(df, 'skill1', 'skill2', ['freq'])
-    
-    # 노드 간격과 배치 최적화 (k값이 클수록 노드가 멀어짐)
     pos = nx.spring_layout(G, k=1.0, iterations=100, seed=42)
 
     # 엣지(선) 그리기
@@ -64,15 +61,14 @@ def render(user_skill_map):
         node_y.append(pos[node][1])
         node_text.append(node)
         
-        # 색상 및 크기 로직
         if node in my_skills:
-            node_color.append('#FF4B4B') # 보유 기술: 빨강
+            node_color.append('#FF4B4B') # 보유 기술
             node_size.append(18)
         elif any(neighbor in my_skills for neighbor in G.neighbors(node)):
-            node_color.append('#00FFCC') # 추천 기술: 민트
+            node_color.append('#00FFCC') # 추천 기술
             node_size.append(14)
         else:
-            node_color.append('#4A90E2') # 일반 기술: 파랑
+            node_color.append('#4A90E2') # 기타 기술
             node_size.append(10)
 
     node_trace = go.Scatter(
@@ -81,7 +77,6 @@ def render(user_skill_map):
         hoverinfo='text', marker=dict(size=node_size, color=node_color, line=dict(width=1.5, color='white'))
     )
 
-    # 그래프 렌더링
     fig = go.Figure(data=[edge_trace, node_trace],
                     layout=go.Layout(
                         showlegend=False, hovermode='closest', 
@@ -93,7 +88,6 @@ def render(user_skill_map):
     
     st.plotly_chart(fig, use_container_width=True)
     
-    # 구분 범례
     st.markdown("""
     <div style="display: flex; gap: 20px; justify-content: center; padding: 10px; background: #262730; border-radius: 10px;">
         <span>🔴 <b>보유 기술</b></span>
