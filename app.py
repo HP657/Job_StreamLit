@@ -3,7 +3,7 @@ from db import load_df
 from utils.queries import ALL_SKILLS, MARKET_DEMAND
 
 # 루트 디렉토리의 modules 폴더에서 호출
-from modules import market_value, skill_gap, company_recommend, skill_network, company_heatmap, career_gap
+from modules import market_value, skill_gap, company_recommend, skill_network, company_heatmap, career_gap, architecture
 
 st.set_page_config(page_title="커리어 대시보드", layout="wide")
 
@@ -27,8 +27,8 @@ selected_skills = st.sidebar.multiselect("보유 기술 선택", all_skills)
 user_skill_map = {skill: 0.5 if st.sidebar.radio(f"{skill} 숙련도", ["초급", "숙련"], key=f"level_{skill}", horizontal=True) == "초급" else 1.0 for skill in selected_skills}
 
 # 탭 구성
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "🎯 역량 갭", "🔗 네트워크", "📊 경력 단계별 분석", "💰 시장 가치", "🏢 기업 추천", "🏢 기업 기술 DNA"
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    "🎯 역량 갭", "🔗 네트워크", "📊 경력 단계별 분석", "💰 시장 가치", "🏢 기업 추천", "🏢 기업 기술 DNA", "🏗️ 아키텍처"
 ])
 
 # 렌더링
@@ -38,6 +38,7 @@ with tab3: career_gap.render(all_skills)
 with tab4: market_value.render(user_skill_map, all_skills, market_dict)
 with tab5: company_recommend.render(user_skill_map)
 with tab6: company_heatmap.render(user_skill_map)
+with tab7: architecture.render()
 
 st.markdown("---")
 st.caption("본 대시보드는 실시간 채용 공고 데이터를 분석하여 최적의 학습 경로를 제시합니다.")
