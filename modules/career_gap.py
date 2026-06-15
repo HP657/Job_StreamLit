@@ -33,10 +33,10 @@ def get_career_skills(selected_skill=None):
             return pd.read_sql(sql, conn)
 
 def render(all_skills):
-    st.header("📈 경력 단계별 핵심 스킬 분석")
+    # 헤더 중복 제거
     st.header("📊 경력 단계별 분석")
     
-    # [설명 추가] 로직 설명을 위한 expander
+    # 1. 설명 토글 (가장 먼저 배치)
     with st.expander("💡 경력 단계별 역량 분석 로직 자세히 보기"):
         st.markdown("""
         경력 연차에 따라 요구되는 기술 스택의 변화를 분석하여 커리어 성장 경로를 제시합니다.
@@ -48,6 +48,7 @@ def render(all_skills):
         이 분석을 통해 사용자는 현재 단계에서 다음 커리어로 넘어가기 위해 필요한 '기술적 문턱'을 확인할 수 있습니다.
         """)
     
+    # 2. 데이터 분석 및 그래프
     selected = st.selectbox("분석할 기술 선택", ["전체"] + all_skills)
     skill_name = None if selected == "전체" else selected
     df = get_career_skills(skill_name)
