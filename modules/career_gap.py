@@ -6,25 +6,21 @@ from db import engine
 
 def get_career_skills(selected_skill, selected_exp):
     with engine.connect() as conn:
-        # 1. 경력 그룹화 매핑 (신입 데이터 누락 방지)
+        # 경력 그룹화: 신입 제거, 경력무관 최우선 배치
         exp_mapping = """
         CASE 
-            WHEN experience IN ('신입', '0년 이상', '신입(0년)') THEN '신입(0년)'
-            WHEN experience IN ('1년 이상', '2년 이상') THEN '주니어(1~2년)'
-            WHEN experience IN ('3년 이상', '4년 이상') THEN '미드(3~4년)'
-            WHEN experience IN ('5년 이상', '6년 이상', '7년 이상', '8년 이상', '10년 이상', '11년 이상', '15년 이상') THEN '시니어(5년+)'
-            ELSE '경력무관' 
-        END
+            WHEN experience = '경력무관' THEN '0. 경력무관'
+            WHEN experience IN ('1년 이상', '2년 이상') THEN '1. 주니어(1~2년)'
+            WHEN experience IN ('3년 이상', '4년 이상') THEN '2. 미드(3~4년)'
+            WHEN experience IN ('5년 이상', '6년 이상', '7년 이상', '8년 이상', '10년 이상', '11년 이상', '15년 이상') THEN '3. 시니어(5년+)'
+            ELSE '0. 경력무관' 
+        END as exp_group
         """
         
-        # 2. 쿼리 구성
         params = {}
-        where_clauses = []
-        
-        # 기술 선택 시 연관 분석을 위한 조인 조건 및 필터
         if selected_skill and selected_skill != "전체":
             sql = f"""
-                SELECT s2.name, {exp_mapping} as exp_group, COUNT(*) as count
+                SELECT s2.name, {exp_mapping}, COUNT(*) as count
                 FROM job_opening_skills jos1
                 JOIN skills s1 ON jos1.skill_id = s1.id
                 JOIN job_opening_skills jos2 ON jos1.job_opening_id = jos2.job_opening_id
@@ -34,43 +30,49 @@ def get_career_skills(selected_skill, selected_exp):
             """
             params["skill_name"] = selected_skill
         else:
-            # 전체 조회
             sql = f"""
-                SELECT s.name, {exp_mapping} as exp_group, COUNT(*) as count
+                SELECT s.name, {exp_mapping}, COUNT(*) as count
                 FROM job_opening_skills jos
                 JOIN skills s ON s.id = jos.skill_id
                 JOIN job_openings jo ON jo.id = jos.job_opening_id
             """
             
-        # 경력 조건 추가
         if selected_exp and selected_exp != "전체":
-            sql += f" AND ({exp_mapping}) = :exp "
+            sql += f" AND ({exp_mapping.replace('as exp_group', '')}) = :exp "
             params["exp"] = selected_exp
         
         sql += " GROUP BY 1, 2 ORDER BY count DESC "
         
-        # 3. 데이터 로드
         df = pd.read_sql(text(sql), conn, params=params)
         
         if df.empty: return df
 
-        # 4. 상위 10개 필터링
+        # 기술 선택 시 연관 기술 상위 10개 추출
         top_skills = df.groupby('name')['count'].sum().nlargest(10).index.tolist()
         return df[df['name'].isin(top_skills)]
 
 def render(all_skills):
     st.header("📊 경력 단계별 분석")
     
-    with st.expander("💡 분석 로직 상세 안내"):
+    with st.expander("💡 상세 분석 및 데이터 추출 로직 안내"):
         st.markdown("""
-        - **기술 연관 로직**: 특정 기술을 선택하면 해당 기술이 포함된 공고를 찾고, 그 공고에 같이 등장하는(Co-occurrence) 기술들의 경력별 분포를 분석합니다.
-        - **경력 표준화**: 10개 이상의 파편화된 경력 데이터를 5개 그룹으로 통합하여 분석 신뢰도를 높였습니다.
-        - **정렬 기준**: 선택한 기술이 있는 경우 해당 기술을 그래프의 최좌측에 배치하고, 전체 조회 시 빈도가 높은 순으로 정렬합니다.
+        **1. 경력 그룹화 표준화**
+        - 데이터의 일관성을 위해 파편화된 경력 데이터를 4개 핵심 구간으로 통합했습니다.
+        - **우선순위 정렬**: '경력무관'을 가장 먼저 배치하여, 특정 연차 제한이 없는 채용 공고의 범용적 기술 수요를 가장 먼저 확인할 수 있게 설계했습니다.
+        
+        **2. 데이터 추출 알고리즘**
+        - **전체 조회**: 모든 채용 공고를 대상으로 기술별 빈도수를 계산하여 시장 전체에서 가장 수요가 많은 상위 10개 기술을 추출합니다.
+        - **기술 연관 분석 (Co-occurrence)**: 특정 기술을 선택하면, 해당 기술이 포함된 채용 공고를 찾고 그 안에 함께 기재된 기술들(연관 스택)의 경력별 분포를 재계산합니다.
+        - **연차 필터링**: 사용자가 특정 경력 구간을 선택하면, 해당 구간의 기술 수요 데이터를 집중적으로 필터링하여 시각화합니다.
+        
+        **3. 시각화 가이드**
+        - 선택하신 기술이 그래프의 가장 왼쪽에 배치되어 연관도 파악이 용이합니다.
+        - `경력무관` 그룹은 데이터 범용성 판단의 기준점으로 활용됩니다.
         """)
     
     col1, col2 = st.columns(2)
     selected_skill = col1.selectbox("분석할 기술 선택", ["전체"] + all_skills)
-    exp_order = ['신입(0년)', '주니어(1~2년)', '미드(3~4년)', '시니어(5년+)', '경력무관']
+    exp_order = ['0. 경력무관', '1. 주니어(1~2년)', '2. 미드(3~4년)', '3. 시니어(5년+)']
     selected_exp = col2.selectbox("경력 연차 선택", ["전체"] + exp_order)
     
     df = get_career_skills(selected_skill, selected_exp)
@@ -81,7 +83,6 @@ def render(all_skills):
 
     df['exp_group'] = pd.Categorical(df['exp_group'], categories=exp_order, ordered=True)
     
-    # 선택 기술 우선순위 정렬 반영
     unique_names = [selected_skill] + [n for n in df['name'].unique() if n != selected_skill] if selected_skill != "전체" else df['name'].unique()
     
     fig = px.bar(
