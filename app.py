@@ -26,7 +26,7 @@ market_df = load_df(MARKET_DEMAND)
 market_dict = dict(zip(market_df["name"], market_df["demand_count"]))
 
 # --- 사이드바 영역 ---
-st.sidebar.title("🚀 분석 도구")
+st.sidebar.title("🚀 잡플래닛 채용 분석 도구")
 
 # 프로필 설정
 st.sidebar.header("👤 나의 프로필")
