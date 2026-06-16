@@ -9,10 +9,10 @@ def get_career_skills(selected_skill, selected_exp):
         # 경력 그룹화: 신입 제거, 경력무관 최우선 배치
         exp_mapping = """
         CASE 
-            WHEN experience = '경력무관' THEN '0. 경력무관'
-            WHEN experience IN ('1년 이상', '2년 이상') THEN '1. 주니어(1~2년)'
-            WHEN experience IN ('3년 이상', '4년 이상') THEN '2. 미드(3~4년)'
-            WHEN experience IN ('5년 이상', '6년 이상', '7년 이상', '8년 이상', '10년 이상', '11년 이상', '15년 이상') THEN '3. 시니어(5년+)'
+            WHEN experience = '경력무관' THEN '경력무관'
+            WHEN experience IN ('1년 이상', '2년 이상') THEN '주니어(1~2년)'
+            WHEN experience IN ('3년 이상', '4년 이상') THEN '미드(3~4년)'
+            WHEN experience IN ('5년 이상', '6년 이상', '7년 이상', '8년 이상', '10년 이상', '11년 이상', '15년 이상') THEN '시니어(5년+)'
             ELSE '0. 경력무관' 
         END as exp_group
         """
@@ -72,7 +72,7 @@ def render(all_skills):
     
     col1, col2 = st.columns(2)
     selected_skill = col1.selectbox("분석할 기술 선택", ["전체"] + all_skills)
-    exp_order = ['0. 경력무관', '1. 주니어(1~2년)', '2. 미드(3~4년)', '3. 시니어(5년+)']
+    exp_order = ['경력무관', '주니어(1~2년)', '미드(3~4년)', '시니어(5년+)']
     selected_exp = col2.selectbox("경력 연차 선택", ["전체"] + exp_order)
     
     df = get_career_skills(selected_skill, selected_exp)
